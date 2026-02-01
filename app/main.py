@@ -24,11 +24,12 @@ def main(argv: list[str] | None = None) -> int:
         chat_client = OpenAIChatClient(config.openai)
         service = ConversationService(chat_client=chat_client)
         # TODO: system prompt should be user-configurable via UI.
-        resolved_system = config.resolve_system_prompt()
+        # Priority: CLI --system > env/file > ConversationService default.
+        resolved_system = (
+            args.system if args.system is not None else config.resolve_system_prompt()
+        )
         if resolved_system is not None:
             service.system_prompt = resolved_system
-        if args.system is not None:
-            service.system_prompt = args.system
 
         reply = service.reply(user_text)
         print(reply)

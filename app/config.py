@@ -51,10 +51,13 @@ class AppConfig:
     def resolve_system_prompt(self) -> str | None:
         """Resolve system prompt from env or file.
 
-        Priority:
+        Priority (within config sources):
         1) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT`
         2) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: prompt.txt) if exists & non-empty
         3) None (ConversationService default will be used)
+
+        Note: the CLI `--system` option (handled by the entrypoint) can override
+        this resolution.
         """
 
         if self.system_prompt:
