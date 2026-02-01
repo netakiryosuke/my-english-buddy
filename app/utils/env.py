@@ -12,7 +12,7 @@ def load_dotenv(env_file: str | None) -> None:
 
     try:
         from dotenv import load_dotenv
-    except Exception:
+    except (ImportError, ModuleNotFoundError):
         # Optional at runtime; dependency is included in pyproject.toml.
         return
 
