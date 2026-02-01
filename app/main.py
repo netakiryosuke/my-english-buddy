@@ -72,24 +72,24 @@ def main(argv: list[str] | None = None) -> int:
 		reply = service.reply(user_text)
 		print(reply)
 		return 0
-	except ValueError as exc:
-		print(f"Config error: {exc}", file=sys.stderr)
+	except ValueError as e:
+		print(f"Config error: {e}", file=sys.stderr)
 		return 2
-	except AuthenticationError as exc:
+	except AuthenticationError as e:
 		print("OpenAI auth error: invalid API key or base URL.", file=sys.stderr)
-		print(str(exc), file=sys.stderr)
+		print(str(e), file=sys.stderr)
 		return 3
-	except RateLimitError as exc:
+	except RateLimitError as e:
 		print("OpenAI rate limit error.", file=sys.stderr)
-		print(str(exc), file=sys.stderr)
+		print(str(e), file=sys.stderr)
 		return 4
-	except APIConnectionError as exc:
+	except APIConnectionError as e:
 		print("OpenAI connection error (network/timeout).", file=sys.stderr)
-		print(str(exc), file=sys.stderr)
+		print(str(e), file=sys.stderr)
 		return 5
-	except OpenAIError as exc:
+	except OpenAIError as e:
 		print("OpenAI error.", file=sys.stderr)
-		print(str(exc), file=sys.stderr)
+		print(str(e), file=sys.stderr)
 		return 6
 
 
