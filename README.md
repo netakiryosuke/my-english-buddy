@@ -29,6 +29,9 @@ uv run python -m app.main
 echo "You are an English tutor. Be concise." > prompt.txt
 uv run python -m app.main
 
+# override system prompt from the command line
+uv run python -m app.main --system "You are an English tutor. Be concise." "Hello!"
+
 # specify env file explicitly
 uv run python -m app.main --env-file .env "Hello!"
 ```
