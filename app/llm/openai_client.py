@@ -25,6 +25,12 @@ class OpenAIChatClient:
             messages=messages,
         )
 
-        choice = response.choices[0]
+        choices = getattr(response, "choices", None)
+        if not choices:
+            raise RuntimeError(
+                "OpenAI API returned no choices for chat completion response."
+            )
+
+        choice = choices[0]
         content = (choice.message.content or "").strip()
         return content
