@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from openai import OpenAI
 
 from app.config import DEFAULT_TIMEOUT_SECONDS, OpenAIConfig
-
-
-@dataclass(frozen=True)
-class ChatMessage:
-    role: str
-    content: str
 
 
 class OpenAIChatClient:
