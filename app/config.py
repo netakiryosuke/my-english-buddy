@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
+DEFAULT_SYSTEM_PROMPT_FILE = "prompt.txt"
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,8 @@ class OpenAIConfig:
 @dataclass(frozen=True)
 class AppConfig:
     openai: OpenAIConfig
+    system_prompt: str | None = None
+    system_prompt_file: str | None = DEFAULT_SYSTEM_PROMPT_FILE
 
     @staticmethod
     def from_env() -> "AppConfig":
@@ -30,10 +33,39 @@ class AppConfig:
 
         base_url = os.getenv("OPENAI_BASE_URL") or None
 
+        # TODO: In the real desktop app, this should likely be stored per-user
+        # (e.g., in local storage) and editable in the UI.
+        system_prompt = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT") or None
+        system_prompt_file = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE") or DEFAULT_SYSTEM_PROMPT_FILE
+
         return AppConfig(
             openai=OpenAIConfig(
                 api_key=api_key,
                 model=model,
                 base_url=base_url,
-            )
+            ),
+            system_prompt=system_prompt,
+            system_prompt_file=system_prompt_file,
         )
+
+    def resolve_system_prompt(self) -> str | None:
+        """Resolve system prompt from env or file.
+
+        Priority:
+        1) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT`
+        2) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: prompt.txt) if exists & non-empty
+        3) None (ConversationService default will be used)
+        """
+
+        if self.system_prompt:
+            return self.system_prompt
+        if not self.system_prompt_file:
+            return None
+
+        try:
+            from app.utils.text import read_text_file
+
+            text = read_text_file(self.system_prompt_file)
+            return text or None
+        except FileNotFoundError:
+            return None

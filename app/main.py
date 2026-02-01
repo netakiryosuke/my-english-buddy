@@ -13,12 +13,9 @@ def main(argv: list[str] | None = None) -> int:
 	from openai import APIConnectionError, AuthenticationError, OpenAIError, RateLimitError
 
 	args = parse_args(sys.argv[1:] if argv is None else argv)
-	user_text = args.prompt
-
-	if user_text is None:
-		user_text = sys.stdin.read().strip()
-		if not user_text:
-			user_text = input("> ").strip()
+	# TODO: This is a temporary text-only sample. In the real app, user_text will
+	# come from Speech-to-Text (STT) results.
+	user_text = args.prompt or "Hello! Please correct my English: I has a pen."
 
 	load_dotenv(args.env_file)
 
@@ -26,6 +23,10 @@ def main(argv: list[str] | None = None) -> int:
 		config = AppConfig.from_env()
 		chat_client = OpenAIChatClient(config.openai)
 		service = ConversationService(chat_client=chat_client)
+		# TODO: system prompt should be user-configurable via UI.
+		resolved_system = config.resolve_system_prompt()
+		if resolved_system is not None:
+			service.system_prompt = resolved_system
 		if args.system is not None:
 			service.system_prompt = args.system
 

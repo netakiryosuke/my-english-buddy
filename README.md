@@ -8,6 +8,11 @@
 - `OPENAI_MODEL` (required)
 - `OPENAI_BASE_URL` (optional)
 
+Optional system prompt configuration:
+
+- `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` (optional)
+- `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (optional, default: `prompt.txt`)
+
 You can put these in a `.env` file (recommended). See `.env.example`.
 
 ### Run
@@ -16,6 +21,13 @@ You can put these in a `.env` file (recommended). See `.env.example`.
 cp .env.example .env
 # edit .env and set OPENAI_API_KEY
 uv run python -m app.main "Hello! Please correct my English: I has a pen."
+
+# or omit the prompt to use the built-in sample text
+uv run python -m app.main
+
+# system prompt from file
+echo "You are an English tutor. Be concise." > prompt.txt
+uv run python -m app.main
 
 # specify env file explicitly
 uv run python -m app.main --env-file .env "Hello!"

@@ -8,7 +8,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "prompt",
         nargs="?",
-        help="User prompt. If omitted, read from stdin.",
+        help="User prompt. If omitted, a built-in sample text is used.",
     )
     parser.add_argument(
         "--env-file",

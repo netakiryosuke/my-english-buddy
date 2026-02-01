@@ -9,6 +9,7 @@ from app.llm.openai_client import OpenAIChatClient
 class ConversationService:
     chat_client: OpenAIChatClient
     system_prompt: str | None = (
+        # TODO: Make this configurable per user (UI / local storage).
         "You are My English Buddy. Answer in clear, friendly English. "
         "If the user writes Japanese, you may include short Japanese hints."
     )
