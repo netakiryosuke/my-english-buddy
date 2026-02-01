@@ -5,9 +5,8 @@
 ### Environment variables
 
 - `OPENAI_API_KEY` (required)
-- `OPENAI_MODEL` (optional, default: `gpt-4o-mini`)
+- `OPENAI_MODEL` (required)
 - `OPENAI_BASE_URL` (optional)
-- `OPENAI_TIMEOUT_SECONDS` (optional, default: `60`)
 
 You can put these in a `.env` file (recommended). See `.env.example`.
 
@@ -28,3 +27,4 @@ uv run python -m app.main --env-file .env "Hello!"
 ### Notes
 
 - This is a minimal text-only connection check. Audio features will be added later.
+- Request timeout is fixed to 60 seconds in the app.

@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 	_ensure_repo_root_on_sys_path()
 
 	from app.application.conversation_service import ConversationService
-	from app.infra.config import AppConfig
+	from app.config import AppConfig
 	from app.llm.openai_client import OpenAIChatClient
 	from openai import APIConnectionError, AuthenticationError, OpenAIError, RateLimitError
 

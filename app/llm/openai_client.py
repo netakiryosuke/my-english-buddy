@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 from openai import OpenAI
-from app.infra.config import OpenAIConfig
+
+from app.config import DEFAULT_TIMEOUT_SECONDS, OpenAIConfig
 
 
 @dataclass(frozen=True)
@@ -16,7 +19,7 @@ class OpenAIChatClient:
         self._client = OpenAI(
             api_key=config.api_key,
             base_url=config.base_url,
-            timeout=config.timeout_seconds,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
         )
 
     def complete(self, *, system: str | None, user: str) -> str:
