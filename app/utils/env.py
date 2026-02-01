@@ -11,9 +11,9 @@ def load_dotenv(env_file: str | None) -> None:
         return
 
     try:
-        from dotenv import load_dotenv
+        from dotenv import load_dotenv as dotenv_load_dotenv
     except (ImportError, ModuleNotFoundError):
         # Optional at runtime; dependency is included in pyproject.toml.
         return
 
-    load_dotenv(env_file, override=False)
+    dotenv_load_dotenv(env_file, override=False)
