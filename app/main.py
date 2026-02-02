@@ -53,6 +53,14 @@ def main(argv: list[str] | None = None) -> int:
         print("OpenAI error.", file=sys.stderr)
         print(str(e), file=sys.stderr)
         return 6
+    except RuntimeError as e:
+        print("Runtime error in chat flow.", file=sys.stderr)
+        print(str(e), file=sys.stderr)
+        return 7
+    except Exception as e:
+        print("Unexpected error.", file=sys.stderr)
+        print(str(e), file=sys.stderr)
+        return 8
 
 
 if __name__ == "__main__":
