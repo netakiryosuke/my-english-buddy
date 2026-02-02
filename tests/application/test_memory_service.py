@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.application.memory_service import ChatMessage, MemoryService
+from app.application.memory_service import MemoryService
 
 
 class TestMemoryService(unittest.TestCase):

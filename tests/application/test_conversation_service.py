@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from app.application.conversation_service import ConversationService
 from app.application.memory_service import MemoryService
