@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+from typing import TypeAlias
+
 from openai import OpenAI
 
 from app.config import DEFAULT_TIMEOUT_SECONDS, OpenAIConfig
+
+
+try:
+    from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
+
+    ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
+except Exception:  # pragma: no cover
+    # Keep runtime working even if OpenAI SDK's type exports move.
+    ChatCompletionMessageParam: TypeAlias = dict[str, str]
 
 
 class OpenAIChatClient:
@@ -15,7 +26,7 @@ class OpenAIChatClient:
         )
 
     def complete(self, *, system: str | None, user: str) -> str:
-        messages: list[dict[str, str]] = []
+        messages: list[ChatCompletionMessageParam] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user})
@@ -25,7 +36,7 @@ class OpenAIChatClient:
             messages=messages,
         )
 
-        choices = getattr(response, "choices", None)
+        choices = response.choices
         if not choices:
             raise RuntimeError(
                 "OpenAI API returned no choices for chat completion response."
