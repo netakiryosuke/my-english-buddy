@@ -20,9 +20,4 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Optional system prompt override (otherwise default is used).",
     )
-    parser.add_argument(
-        "--repl",
-        action="store_true",
-        help="Start an interactive prompt loop (useful to test conversation memory).",
-    )
     return parser.parse_args(argv)
