@@ -10,19 +10,15 @@ class SpeechToText:
     def __init__(
         self,
         *,
-        api_key: str,
+        client: OpenAI,
         model: str = "gpt-4o-mini-transcribe",
         sample_rate: int = 16_000,
     ):
-        self.sample_rate = sample_rate
-        self.client = OpenAI(api_key=api_key)
+        self.client = client
         self.model = model
+        self.sample_rate = sample_rate
 
     def transcribe(self, audio: np.ndarray) -> str:
-        """
-        Convert recorded audio to text using OpenAI STT.
-        """
-        # numpy → wav (in memory)
         wav_buffer = io.BytesIO()
         write(wav_buffer, self.sample_rate, audio)
         wav_buffer.seek(0)
