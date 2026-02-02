@@ -31,6 +31,21 @@ def main(argv: list[str] | None = None) -> int:
         if resolved_system is not None:
             service.system_prompt = resolved_system
 
+        if args.repl:
+            print("Enter messages (Ctrl-D to exit):")
+            while True:
+                try:
+                    line = input("> ")
+                except EOFError:
+                    print()
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                reply = service.reply(line)
+                print(reply)
+            return 0
+
         reply = service.reply(user_text)
         print(reply)
         return 0

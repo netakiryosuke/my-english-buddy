@@ -30,7 +30,9 @@ class OpenAIChatClient:
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user})
+        return self.complete_messages(messages=messages)
 
+    def complete_messages(self, *, messages: list[ChatCompletionMessageParam]) -> str:
         response = self._client.chat.completions.create(
             model=self._config.model,
             messages=messages,
