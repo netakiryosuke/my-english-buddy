@@ -38,15 +38,15 @@ def main(argv: list[str] | None = None) -> int:
         user_text = stt.transcribe(audio)
 
         chat_client = OpenAIChatClient(config.openai)
-        service = ConversationService(chat_client=chat_client)
+        conversation_service = ConversationService(chat_client=chat_client)
 
         resolved_system = (
             args.system if args.system is not None else config.resolve_system_prompt()
         )
         if resolved_system is not None:
-            service.system_prompt = resolved_system
+            conversation_service.system_prompt = resolved_system
 
-        reply = service.reply(user_text)
+        reply = conversation_service.reply(user_text)
         print(reply)
         return 0
 
