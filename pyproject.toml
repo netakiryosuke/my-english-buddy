@@ -10,3 +10,8 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "sounddevice>=0.5.5",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+]
