@@ -43,10 +43,10 @@ def main(argv: list[str] | None = None) -> int:
         chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
         conversation_service = ConversationService(chat_client=chat_client)
 
-        resolved_system = config.resolve_system_prompt()
+        prompt = config.resolve_system_prompt()
 
-        if resolved_system is not None:
-            conversation_service.system_prompt = resolved_system
+        if prompt is not None:
+            conversation_service.system_prompt = prompt
 
         reply = conversation_service.reply(user_text)
         print(reply)
