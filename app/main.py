@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         if not user_text:
             return 0
 
-        chat_client = OpenAIChatClient(config.openai)
+        chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
         conversation_service = ConversationService(chat_client=chat_client)
 
         resolved_system = (
