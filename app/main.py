@@ -36,9 +36,9 @@ def main(argv: list[str] | None = None) -> int:
 
         stt = SpeechToText(client=openai_client)
         user_text = stt.transcribe(audio)
-        
+
         if not user_text:
-            return 0 
+            return 0
 
         chat_client = OpenAIChatClient(config.openai)
         conversation_service = ConversationService(chat_client=chat_client)
