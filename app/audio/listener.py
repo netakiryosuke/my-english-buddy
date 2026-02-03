@@ -56,14 +56,16 @@ class Listener:
                     int(self.sample_rate * self.chunk_duration)
                 )
 
-                frames.append(chunk)
                 volume = float(np.abs(chunk).mean())
 
                 if volume >= threshold:
                     silent_time = 0.0
-                    speech_detected = True
-                else:
+                    if not speech_detected:
+                        speech_detected = True
+                    frames.append(chunk)
+                elif speech_detected:
                     silent_time += self.chunk_duration
+                    frames.append(chunk)
 
                 if speech_detected and silent_time >= self.silence_duration:
                     break
