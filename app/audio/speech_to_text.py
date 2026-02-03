@@ -24,8 +24,11 @@ class SpeechToText:
         if self._is_silent(audio):
             return ""
 
+        audio = np.clip(audio, -1.0, 1.0)
+        audio_int16 = (audio * 32767).astype(np.int16)
+
         wav_buffer = io.BytesIO()
-        write(wav_buffer, self.sample_rate, audio)
+        write(wav_buffer, self.sample_rate, audio_int16)
         wav_buffer.seek(0)
 
         response = self.client.audio.transcriptions.create(
@@ -36,4 +39,6 @@ class SpeechToText:
         return response.text.strip()
 
     def _is_silent(self, audio: np.ndarray) -> bool:
-        return float(np.abs(audio).mean()) < self.silence_threshold
+        audio_float = np.asarray(audio, dtype=np.float32)
+        rms = np.sqrt(np.mean(audio_float**2))
+        return rms < self.silence_threshold
