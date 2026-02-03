@@ -1,6 +1,6 @@
 # my-english-buddy
 
-## Text-only LLM test (OpenAI)
+## Audio-based OpenAI chat application
 
 ### Environment variables
 
@@ -20,23 +20,22 @@ You can put these in a `.env` file (recommended). See `.env.example`.
 ```bash
 cp .env.example .env
 # edit .env and set OPENAI_API_KEY
-uv run python -m app.main "Hello! Please correct my English: I has a pen."
 
-# or omit the prompt to use the built-in sample text
+# Run with audio input (records from your microphone)
 uv run python -m app.main
 
-# system prompt from file
+# System prompt from file
 echo "You are an English tutor. Be concise." > prompt.txt
 uv run python -m app.main
 
-# override system prompt from the command line
-uv run python -m app.main --system "You are an English tutor. Be concise." "Hello!"
+# Override system prompt from the command line
+uv run python -m app.main --system "You are an English tutor. Be concise."
 
-# specify env file explicitly
-uv run python -m app.main --env-file .env "Hello!"
+# Specify env file explicitly
+uv run python -m app.main --env-file .env
 ```
 
 ### Notes
 
-- This is a minimal text-only connection check. Audio features will be added later.
+- The application records audio from your microphone and transcribes it using OpenAI's Whisper API.
 - Request timeout is fixed to 60 seconds in the app.
