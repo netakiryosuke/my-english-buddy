@@ -31,6 +31,11 @@ class Listener:
             volume = float(np.abs(chunk).mean())
             noise_samples.append(volume)
 
+        if not noise_samples:
+            raise RuntimeError(
+                "Failed to calibrate noise level: no audio samples were collected."  
+            )
+
         noise_level = np.mean(noise_samples)
         return noise_level * self.noise_threshold_multiplier
 
