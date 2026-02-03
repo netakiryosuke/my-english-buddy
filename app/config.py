@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-
+from app.utils.text import read_text_file
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_SYSTEM_PROMPT_FILE = "prompt.txt"
@@ -55,9 +55,6 @@ class AppConfig:
         1) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT`
         2) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: prompt.txt) if exists & non-empty
         3) None (ConversationService default will be used)
-
-        Note: the CLI `--system` option (handled by the entrypoint) can override
-        this resolution.
         """
 
         if self.system_prompt:
@@ -66,8 +63,6 @@ class AppConfig:
             return None
 
         try:
-            from app.utils.text import read_text_file
-
             text = read_text_file(self.system_prompt_file)
             return text or None
         except FileNotFoundError:

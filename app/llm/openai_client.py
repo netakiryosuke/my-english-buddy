@@ -4,9 +4,6 @@ from typing import TypeAlias
 
 from openai import OpenAI
 
-from app.config import DEFAULT_TIMEOUT_SECONDS, OpenAIConfig
-
-
 try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
 
