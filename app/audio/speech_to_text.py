@@ -39,5 +39,6 @@ class SpeechToText:
         return response.text.strip()
 
     def _is_silent(self, audio: np.ndarray) -> bool:
-        rms = np.sqrt(np.mean(audio**2))
+        audio_float = np.asarray(audio, dtype=np.float32)
+        rms = np.sqrt(np.mean(audio_float**2))
         return rms < self.silence_threshold
