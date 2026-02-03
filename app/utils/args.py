@@ -4,12 +4,7 @@ import argparse
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Text-only OpenAI chat test")
-    parser.add_argument(
-        "prompt",
-        nargs="?",
-        help="User prompt. If omitted, a built-in sample text is used.",
-    )
+    parser = argparse.ArgumentParser(description="Audio-based OpenAI chat application")
     parser.add_argument(
         "--env-file",
         default=".env",
