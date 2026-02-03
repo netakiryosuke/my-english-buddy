@@ -9,25 +9,41 @@ class Listener:
         *,
         sample_rate: int = 16_000,
         channels: int = 1,
-        record_seconds: float = 5.0,
+        min_volume: float = 1e-3,
+        silence_duration: float = 0.8,
+        chunk_duration: float = 0.1,
     ):
         self.sample_rate = sample_rate
         self.channels = channels
-        self.record_seconds = record_seconds
+        self.min_volume = min_volume
+        self.silence_duration = silence_duration
+        self.chunk_duration = chunk_duration
 
     def listen(self) -> np.ndarray:
-        """Record audio from the default microphone.
+        frames: list[np.ndarray] = []
 
-        Returns:
-            numpy.ndarray: shape (samples, channels)
-        """
+        silent_time = 0.0
 
-        audio = sd.rec(
-            int(self.record_seconds * self.sample_rate),
+        with sd.InputStream(
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype="float32",
-        )
-        sd.wait()
+        ) as stream:
+            while True:
+                chunk, _ = stream.read(
+                    int(self.sample_rate * self.chunk_duration)
+                )
 
-        return audio
+                frames.append(chunk)
+
+                volume = float(np.abs(chunk).mean())
+
+                if volume < self.min_volume:
+                    silent_time += self.chunk_duration
+                else:
+                    silent_time = 0.0
+
+                if silent_time >= self.silence_duration:
+                    break
+
+        return np.concatenate(frames, axis=0)
