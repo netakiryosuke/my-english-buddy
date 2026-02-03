@@ -17,13 +17,9 @@ except Exception:  # pragma: no cover
 
 
 class OpenAIChatClient:
-    def __init__(self, config: OpenAIConfig):
-        self._config = config
-        self._client = OpenAI(
-            api_key=config.api_key,
-            base_url=config.base_url,
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-        )
+    def __init__(self, client: OpenAI, model: str):
+        self._client = client
+        self._model = model
 
     def complete(self, *, system: str | None, user: str) -> str:
         messages: list[ChatCompletionMessageParam] = []
@@ -34,7 +30,7 @@ class OpenAIChatClient:
 
     def complete_messages(self, *, messages: list[ChatCompletionMessageParam]) -> str:
         response = self._client.chat.completions.create(
-            model=self._config.model,
+            model=self._model,
             messages=messages,
         )
 
