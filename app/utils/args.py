@@ -10,9 +10,4 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=".env",
         help="Path to .env file (default: .env). Use empty to disable.",
     )
-    parser.add_argument(
-        "--system",
-        default=None,
-        help="Optional system prompt override (otherwise default is used).",
-    )
     return parser.parse_args(argv)
