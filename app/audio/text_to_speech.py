@@ -12,12 +12,10 @@ class TextToSpeech:
         *,
         client: OpenAI,
         model: str = "gpt-4o-mini-tts",
-        sample_rate: int = 16_000,
         voice: str = "alloy",
     ):
         self.client = client
         self.model = model
-        self.sample_rate = sample_rate
         self.voice = voice
 
     def synthesize(self, text: str) -> np.ndarray:
