@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import sys
 
-from app.audio.speaker import Speaker
-from app.audio.text_to_speech import TextToSpeech
 from openai import (
     OpenAI,
     APIConnectionError,
@@ -14,6 +12,8 @@ from openai import (
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
+from app.audio.speaker import Speaker
+from app.audio.text_to_speech import TextToSpeech
 from app.application.conversation_service import ConversationService
 from app.config import AppConfig
 from app.llm.openai_client import OpenAIChatClient
