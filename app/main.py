@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+from app.audio.speaker import Speaker
+from app.audio.text_to_speech import TextToSpeech
 from openai import (
     OpenAI,
     APIConnectionError,
@@ -50,6 +52,13 @@ def main(argv: list[str] | None = None) -> int:
 
         reply = conversation_service.reply(user_text)
         print(reply)
+        
+        tts = TextToSpeech(client=openai_client)
+        reply_audio = tts.synthesize(reply)
+        
+        speaker = Speaker()
+        speaker.speak(reply_audio)
+        
         return 0
 
     except ValueError as e:
