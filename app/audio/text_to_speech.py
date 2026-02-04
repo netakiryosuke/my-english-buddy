@@ -33,5 +33,4 @@ class TextToSpeech:
         audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
         audio_float = audio_int16.astype(np.float32) / 32767.0
         
-        silence = np.zeros(int(self.sample_rate * 0.05), dtype=np.float32)
-        return np.concatenate([silence, audio_float])
+        return audio_float

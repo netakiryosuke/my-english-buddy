@@ -1,5 +1,6 @@
 import sounddevice as sd
 import numpy as np
+import time
 
 
 class Speaker:
@@ -7,5 +8,14 @@ class Speaker:
         self.sample_rate = sample_rate
 
     def speak(self, audio: np.ndarray) -> None:
-        sd.play(audio, self.sample_rate)
-        sd.wait()
+        # ステレオの場合はモノラルに変換
+        if audio.ndim == 1:
+            audio = audio.reshape(-1, 1)
+        
+        with sd.OutputStream(
+            samplerate=self.sample_rate,
+            channels=1,
+            dtype='float32'
+        ) as stream:
+            time.sleep(0.1)
+            stream.write(audio)
