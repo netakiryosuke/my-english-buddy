@@ -53,6 +53,9 @@ def main(argv: list[str] | None = None) -> int:
         reply = conversation_service.reply(user_text)
         print(reply)
         
+        if not reply or not reply.strip():
+            return 0
+            
         tts = TextToSpeech(client=openai_client)
         reply_audio = tts.synthesize(reply)
         
