@@ -51,11 +51,12 @@ def main(argv: list[str] | None = None) -> int:
             conversation_service.system_prompt = prompt
 
         reply = conversation_service.reply(user_text)
-        print(reply)
+        
         
         if not reply or not reply.strip():
             return 0
-            
+        print(reply)
+        
         tts = TextToSpeech(client=openai_client)
         reply_audio = tts.synthesize(reply)
         
