@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import io
 import numpy as np
 from openai import OpenAI
-from scipy.io.wavfile import read
 
 
 class TextToSpeech:
