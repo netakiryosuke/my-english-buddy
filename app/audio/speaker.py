@@ -8,7 +8,7 @@ class Speaker:
         self.sample_rate = sample_rate
 
     def speak(self, audio: np.ndarray) -> None:
-        # ステレオの場合はモノラルに変換
+        # Reshape for sounddevice compatibility
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
         
