@@ -48,6 +48,12 @@ uv sync
 uv run python -m app.main
 ```
 
+Optional: customize the system prompt (recommended):
+
+```bash
+cp prompt.txt.example prompt.txt
+```
+
 If you want to load a different dotenv file:
 
 ```bash
@@ -81,6 +87,9 @@ System prompt resolution order:
 ## Example: custom prompt
 
 ```bash
+cp prompt.txt.example prompt.txt
+
+# or create your own prompt file
 echo "You are an English tutor. Be concise. Correct mistakes gently." > prompt.txt
 uv run python -m app.main
 ```
