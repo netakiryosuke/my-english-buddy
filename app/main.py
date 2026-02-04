@@ -12,6 +12,8 @@ from openai import (
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
+from app.audio.speaker import Speaker
+from app.audio.text_to_speech import TextToSpeech
 from app.application.conversation_service import ConversationService
 from app.config import AppConfig
 from app.llm.openai_client import OpenAIChatClient
@@ -49,7 +51,18 @@ def main(argv: list[str] | None = None) -> int:
             conversation_service.system_prompt = prompt
 
         reply = conversation_service.reply(user_text)
+        
+        
+        if not reply or not reply.strip():
+            return 0
         print(reply)
+        
+        tts = TextToSpeech(client=openai_client)
+        reply_audio = tts.synthesize(reply)
+        
+        speaker = Speaker()
+        speaker.speak(reply_audio)
+        
         return 0
 
     except ValueError as e:
