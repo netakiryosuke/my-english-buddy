@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     window = MainWindow(conversation_worker)
     window.show()
     
-    conversation_worker.run()
+    conversation_worker.start()
     
     return app.exec()
 
