@@ -2,13 +2,8 @@ from __future__ import annotations
 
 import sys
 
-from openai import (
-    OpenAI,
-    APIConnectionError,
-    AuthenticationError,
-    OpenAIError,
-    RateLimitError,
-)
+from app.ui.conversation_worker import ConversationWorker
+from openai import OpenAI
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
@@ -26,53 +21,30 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     load_dotenv(args.env_file)
 
-    try:
-        config = AppConfig.from_env()
+    config = AppConfig.from_env()
 
-        openai_client = OpenAI(
-            api_key=config.openai.api_key,
-            base_url=config.openai.base_url,
-        )
+    openai_client = OpenAI(
+        api_key=config.openai.api_key,
+        base_url=config.openai.base_url,
+    )
 
-        chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
+    chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
 
-        prompt = config.resolve_system_prompt()
-        
-        conversation_runner = ConversationRunner(
-            listener=Listener(),
-            stt=SpeechToText(client=openai_client),
-            conversation_service=ConversationService(chat_client=chat_client, system_prompt=prompt),
-            tts=TextToSpeech(client=openai_client),
-            speaker=Speaker()
-        )
-        
-        conversation_runner.run()
-        
-        return 0
-
-    except ValueError as e:
-        print(f"Config error: {e}", file=sys.stderr)
-        return 2
-    except AuthenticationError as e:
-        print("OpenAI auth error.", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 3
-    except RateLimitError as e:
-        print("OpenAI rate limit error.", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 4
-    except APIConnectionError as e:
-        print("OpenAI connection error.", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 5
-    except OpenAIError as e:
-        print("OpenAI error.", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 6
-    except Exception as e:
-        print("Unexpected error.", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 8
+    prompt = config.resolve_system_prompt()
+    
+    conversation_runner = ConversationRunner(
+        listener=Listener(),
+        stt=SpeechToText(client=openai_client),
+        conversation_service=ConversationService(chat_client=chat_client, system_prompt=prompt),
+        tts=TextToSpeech(client=openai_client),
+        speaker=Speaker()
+    )
+    
+    conversation_worker = ConversationWorker(conversation_runner)
+    
+    conversation_worker.run()
+    
+    return 0
 
 
 if __name__ == "__main__":
