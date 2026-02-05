@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Callable
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
@@ -15,7 +16,7 @@ class ConversationRunner:
         conversation_service: ConversationService,
         tts: TextToSpeech,
         speaker: Speaker,
-        on_log: callable | None = None,
+        on_log: Callable[[str], None] | None = None,
     ) -> None:
         self.listener = listener
         self.stt = stt
