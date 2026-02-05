@@ -32,12 +32,18 @@ class ConversationRunner:
             if not user_text:
                 continue
 
+            self._log(f"You: {user_text}")
+
             reply = self.conversation_service.reply(user_text)
 
             if not reply or not reply.strip():
                 continue
 
-            print(reply)
+            self._log(f"Buddy: {reply}")
 
             reply_audio = self.tts.synthesize(reply)
             self.speaker.speak(reply_audio)
+
+    def _log(self, message: str) -> None:
+        if self.on_log:
+            self.on_log(message)
