@@ -15,6 +15,7 @@ from app.audio.speech_to_text import SpeechToText
 from app.audio.speaker import Speaker
 from app.audio.text_to_speech import TextToSpeech
 from app.application.conversation_service import ConversationService
+from app.application.conversation_runner import ConversationRunner
 from app.config import AppConfig
 from app.llm.openai_client import OpenAIChatClient
 from app.utils.args import parse_args
@@ -33,35 +34,19 @@ def main(argv: list[str] | None = None) -> int:
             base_url=config.openai.base_url,
         )
 
-        listener = Listener()
-        audio = listener.listen()
-
-        stt = SpeechToText(client=openai_client)
-        user_text = stt.transcribe(audio)
-
-        if not user_text:
-            return 0
-
         chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
-        conversation_service = ConversationService(chat_client=chat_client)
 
         prompt = config.resolve_system_prompt()
-
-        if prompt is not None:
-            conversation_service.system_prompt = prompt
-
-        reply = conversation_service.reply(user_text)
         
+        conversation_runner = ConversationRunner(
+            listener=Listener(),
+            stt=SpeechToText(client=openai_client),
+            conversation_service=ConversationService(chat_client=chat_client, system_prompt=prompt),
+            tts=TextToSpeech(client=openai_client),
+            speaker=Speaker()
+        )
         
-        if not reply or not reply.strip():
-            return 0
-        print(reply)
-        
-        tts = TextToSpeech(client=openai_client)
-        reply_audio = tts.synthesize(reply)
-        
-        speaker = Speaker()
-        speaker.speak(reply_audio)
+        conversation_runner.run()
         
         return 0
 
