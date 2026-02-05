@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-from app.ui.conversation_worker import ConversationWorker
 from openai import OpenAI
+from PySide6.QtWidgets import QApplication
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
@@ -13,6 +13,8 @@ from app.application.conversation_service import ConversationService
 from app.application.conversation_runner import ConversationRunner
 from app.config import AppConfig
 from app.llm.openai_client import OpenAIChatClient
+from app.ui.conversation_worker import ConversationWorker
+from app.ui.main_window import MainWindow
 from app.utils.args import parse_args
 from app.utils.env import load_dotenv
 
@@ -42,9 +44,13 @@ def main(argv: list[str] | None = None) -> int:
     
     conversation_worker = ConversationWorker(conversation_runner)
     
+    app = QApplication(sys.argv)
+    window = MainWindow(conversation_worker)
+    window.show()
+    
     conversation_worker.run()
     
-    return 0
+    return app.exec()
 
 
 if __name__ == "__main__":
