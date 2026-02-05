@@ -15,12 +15,14 @@ class ConversationRunner:
         conversation_service: ConversationService,
         tts: TextToSpeech,
         speaker: Speaker,
+        on_log: callable
     ) -> None:
         self.listener = listener
         self.stt = stt
         self.conversation_service = conversation_service
         self.tts = tts
         self.speaker = speaker
+        self.on_log = on_log
 
     def run(self) -> None:
         while True:
