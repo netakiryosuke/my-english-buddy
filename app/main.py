@@ -23,16 +23,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     load_dotenv(args.env_file)
 
-    config = AppConfig.from_env()
+    try:
+        config = AppConfig.from_env()
 
-    openai_client = OpenAI(
-        api_key=config.openai.api_key,
-        base_url=config.openai.base_url,
-    )
+        openai_client = OpenAI(
+            api_key=config.openai.api_key,
+            base_url=config.openai.base_url,
+        )
 
-    chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
+        chat_client = OpenAIChatClient(client=openai_client, model=config.openai.model)
 
-    prompt = config.resolve_system_prompt()
+        prompt = config.resolve_system_prompt()
+    except ValueError as e:
+        print(f"Config error: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"Failed to initialize application: {e}", file=sys.stderr)
     
     conversation_runner = ConversationRunner(
         listener=Listener(),

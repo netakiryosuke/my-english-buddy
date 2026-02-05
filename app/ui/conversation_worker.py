@@ -20,8 +20,6 @@ class ConversationWorker(QThread):
     def run(self):
         try:
             self.runner.run()
-        except ValueError as e:
-            self.log.emit(f"Config error: {e}")
         except AuthenticationError as e:
             self.log.emit(f"OpenAI auth error: {e}")
         except RateLimitError as e:
