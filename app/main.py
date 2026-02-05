@@ -36,8 +36,10 @@ def main(argv: list[str] | None = None) -> int:
         prompt = config.resolve_system_prompt()
     except ValueError as e:
         print(f"Config error: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"Failed to initialize application: {e}", file=sys.stderr)
+        return 2
     
     conversation_runner = ConversationRunner(
         listener=Listener(),
