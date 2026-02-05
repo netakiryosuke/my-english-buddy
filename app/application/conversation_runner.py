@@ -28,12 +28,12 @@ class ConversationRunner:
             user_text = self.stt.transcribe(audio)
 
             if not user_text:
-                return
+                continue
 
             reply = self.conversation_service.reply(user_text)
 
             if not reply or not reply.strip():
-                return
+                continue
 
             print(reply)
 
