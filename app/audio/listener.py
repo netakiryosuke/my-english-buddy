@@ -3,6 +3,7 @@ from __future__ import annotations
 import sounddevice as sd
 import numpy as np
 
+
 class Listener:
     def __init__(
         self,

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+
 from app.utils.text import read_text_file
+
 DEFAULT_SYSTEM_PROMPT_FILE = "prompt.txt"
 
 
