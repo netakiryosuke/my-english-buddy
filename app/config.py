@@ -3,8 +3,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from app.utils.text import read_text_file
-
-DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_SYSTEM_PROMPT_FILE = "prompt.txt"
 
 
