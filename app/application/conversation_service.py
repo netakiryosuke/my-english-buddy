@@ -12,7 +12,6 @@ class ConversationService:
     memory: MemoryService = field(default_factory=lambda: MemoryService(max_messages=50))
     memory_window: int = 20
     system_prompt: str | None = (
-        # TODO: Make this configurable per user (UI / local storage).
         "You are My English Buddy. Answer in clear, friendly English. "
         "If the user writes Japanese, you may include short Japanese hints."
     )
@@ -27,8 +26,8 @@ class ConversationService:
         messages: list[dict[str, str]] = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
-        for m in self.memory.recent(self.memory_window):
-            messages.append({"role": m.role, "content": m.content})
+        for recent_message in self.memory.recent(self.memory_window):
+            messages.append({"role": recent_message.role, "content": recent_message.content})
 
         reply = self.chat_client.complete_messages(messages=messages)
         self.memory.add_assistant(reply)
