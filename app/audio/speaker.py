@@ -4,14 +4,14 @@ import time
 
 
 class Speaker:
-    def __init__(self, *, sample_rate: int = 16_000):
+    def __init__(self, *, sample_rate: int = 24_000):
         self.sample_rate = sample_rate
 
     def speak(self, audio: np.ndarray) -> None:
         # Reshape for sounddevice compatibility
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
-        
+
         with sd.OutputStream(
             samplerate=self.sample_rate,
             channels=1,
