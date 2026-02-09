@@ -26,7 +26,7 @@ class Logger:
             if self.on_emit:
                 self.on_emit(message)
 
-        def output(self) -> None:
+        def save(self) -> None:
             self.log_dir.mkdir(parents=True, exist_ok=True)
 
             filename = self._started_at.strftime("%Y-%m-%d_%H-%M-%S.txt")

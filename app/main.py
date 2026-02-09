@@ -42,18 +42,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Failed to initialize application: {e}", file=sys.stderr)
         return 2
 
+    logger = Logger()
+
     conversation_runner = ConversationRunner(
         listener=Listener(),
         stt=SpeechToText(client=openai_client),
         conversation_service=ConversationService(chat_client=chat_client, system_prompt=prompt),
         tts=TextToSpeech(client=openai_client),
         speaker=Speaker(sample_rate=24_000),
-        logger=Logger()
+        logger=logger
     )
 
     conversation_worker = ConversationWorker(conversation_runner)
 
     app = QApplication(sys.argv)
+    app.aboutToQuit.connect(logger.save)
+
     window = MainWindow(conversation_worker)
     window.show()
 
