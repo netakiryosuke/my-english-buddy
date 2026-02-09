@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable
-
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
 from app.audio.speaker import Speaker
 from app.audio.text_to_speech import TextToSpeech
 from app.application.conversation_service import ConversationService
+from app.utils.logger import Logger
 
 
 class ConversationRunner:
@@ -17,14 +16,14 @@ class ConversationRunner:
         conversation_service: ConversationService,
         tts: TextToSpeech,
         speaker: Speaker,
-        on_log: Callable[[str], None] | None = None,
-    ) -> None:
+        logger: Logger,
+        ) -> None:
         self.listener = listener
         self.stt = stt
         self.conversation_service = conversation_service
         self.tts = tts
         self.speaker = speaker
-        self.on_log = on_log
+        self.logger = logger
 
     def run(self) -> None:
         while True:
@@ -47,5 +46,5 @@ class ConversationRunner:
             self.speaker.speak(reply_audio)
 
     def _log(self, message: str) -> None:
-        if self.on_log:
-            self.on_log(message)
+        if self.logger:
+            self.logger.log(message)
