@@ -1,12 +1,13 @@
-from PySide6.QtCore import QThread, Signal
 from openai import (
     APIConnectionError,
     AuthenticationError,
     OpenAIError,
     RateLimitError,
 )
+from PySide6.QtCore import QThread, Signal
 
 from app.application.conversation_runner import ConversationRunner
+
 
 class ConversationWorker(QThread):
     log = Signal(str)
@@ -17,7 +18,7 @@ class ConversationWorker(QThread):
 
         self.runner.on_log = self.log.emit
 
-    def run(self):
+    def run(self) -> None:
         try:
             self.runner.run()
         except AuthenticationError as e:

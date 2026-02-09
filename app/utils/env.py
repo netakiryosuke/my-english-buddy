@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dotenv import load_dotenv as dotenv_load_dotenv
 
 def load_dotenv(env_file: str | None) -> None:

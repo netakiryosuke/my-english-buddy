@@ -40,23 +40,23 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as e:
         print(f"Failed to initialize application: {e}", file=sys.stderr)
         return 2
-    
+
     conversation_runner = ConversationRunner(
         listener=Listener(),
         stt=SpeechToText(client=openai_client),
         conversation_service=ConversationService(chat_client=chat_client, system_prompt=prompt),
         tts=TextToSpeech(client=openai_client),
-        speaker=Speaker()
+        speaker=Speaker(sample_rate=24_000)
     )
-    
+
     conversation_worker = ConversationWorker(conversation_runner)
-    
+
     app = QApplication(sys.argv)
     window = MainWindow(conversation_worker)
     window.show()
-    
+
     conversation_worker.start()
-    
+
     return app.exec()
 
 
