@@ -12,7 +12,7 @@ class Speaker:
     def speak(
         self,
         audio: np.ndarray,
-        stop_event: Event,
+        stop_event: Event | None = None,
         chunk_size: int = 1024,
     ) -> None:
         # Reshape for sounddevice compatibility
@@ -27,7 +27,7 @@ class Speaker:
             time.sleep(0.1)
 
             for i in range(0, len(audio), chunk_size):
-                if stop_event.is_set():
+                if stop_event and stop_event.is_set():
                     break
 
                 chunk = audio[i:i + chunk_size]
