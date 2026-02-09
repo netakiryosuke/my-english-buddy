@@ -29,7 +29,7 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self.is_awake = False
-        self.reply_queue: Queue[str] = Queue()
+        self.reply_queue: Queue[str] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
 
     def run(self) -> None:
