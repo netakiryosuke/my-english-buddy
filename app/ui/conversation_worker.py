@@ -16,7 +16,7 @@ class ConversationWorker(QThread):
         super().__init__()
         self.runner = runner
 
-        self.runner.on_log = self.log.emit
+        self.runner.logger.on_emit = self.log.emit
 
     def run(self) -> None:
         try:
