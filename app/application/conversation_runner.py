@@ -9,6 +9,8 @@ from app.utils.logger import Logger
 
 
 class ConversationRunner:
+    WAKE_WORDS = ["buddy"]
+
     def __init__(
         self,
         listener: Listener,
@@ -24,6 +26,7 @@ class ConversationRunner:
         self.tts = tts
         self.speaker = speaker
         self.logger = logger
+        self.is_awake = False
 
     def run(self) -> None:
         while True:
@@ -32,6 +35,12 @@ class ConversationRunner:
 
             if not user_text:
                 continue
+
+            if not self.is_awake:
+                if self._detect_wake_word(user_text):
+                    self.is_awake = True
+                else:
+                    continue
 
             self._log(f"You: {user_text}")
 
@@ -48,3 +57,11 @@ class ConversationRunner:
     def _log(self, message: str) -> None:
         if self.logger:
             self.logger.log(message)
+
+    def _detect_wake_word(self, text: str) -> bool:
+        normalized_text = text.lower()
+
+        return any(
+            wake_word in normalized_text
+            for wake_word in self.WAKE_WORDS
+        )
