@@ -87,7 +87,14 @@ class ConversationRunner:
             if not reply:
                 continue
 
-            self.stop_speaking_event.clear()
+            try:
+                self.stop_speaking_event.clear()
 
-            reply_audio = self.tts.synthesize(reply)
-            self.speaker.speak(reply_audio, stop_event=self.stop_speaking_event)
+                reply_audio = self.tts.synthesize(reply)
+                self.speaker.speak(reply_audio, stop_event=self.stop_speaking_event)
+            except Exception as e:
+                if self.logger:
+                    self.logger.log(f"Error in speaker loop: {e}")
+
+                self.stop_speaking_event.set()
+                continue
