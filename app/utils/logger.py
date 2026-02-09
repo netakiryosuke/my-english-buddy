@@ -17,19 +17,19 @@ class Logger:
         self._lines: list[str] = []
         self._started_at = datetime.now()
 
-        def log(self, message: str) -> None:
-            if not message:
-                return
+    def log(self, message: str) -> None:
+        if not message:
+            return
 
-            self._lines.append(message)
+        self._lines.append(message)
 
-            if self.on_emit:
-                self.on_emit(message)
+        if self.on_emit:
+            self.on_emit(message)
 
-        def save(self) -> None:
-            self.log_dir.mkdir(parents=True, exist_ok=True)
+    def save(self) -> None:
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-            filename = self._started_at.strftime("%Y-%m-%d_%H-%M-%S.txt")
-            path = self.log_dir / filename
+        filename = self._started_at.strftime("%Y-%m-%d_%H-%M-%S.txt")
+        path = self.log_dir / filename
 
-            path.write_text("\n".join(self._lines), encoding="utf-8")
+        path.write_text("\n".join(self._lines), encoding="utf-8")
