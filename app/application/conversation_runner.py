@@ -1,4 +1,6 @@
 from __future__ import annotations
+from queue import Queue
+from threading import Thread
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
@@ -27,6 +29,7 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self.is_awake = False
+        self.reply_queue: Queue[str] = Queue()
 
     def run(self) -> None:
         while True:
@@ -51,8 +54,7 @@ class ConversationRunner:
 
             self._log(f"Buddy: {reply}")
 
-            reply_audio = self.tts.synthesize(reply)
-            self.speaker.speak(reply_audio)
+            self.reply_queue.put(reply)
 
     def _log(self, message: str) -> None:
         if self.logger:
@@ -65,3 +67,20 @@ class ConversationRunner:
             wake_word in normalized_text
             for wake_word in self.WAKE_WORDS
         )
+
+    def _start_speaker_thread(self) -> None:
+        thread = Thread(
+            target=self._speaker_loop,
+            daemon=True,
+        )
+        thread.start()
+
+    def _speaker_loop(self) -> None:
+        while True:
+            reply = self.reply_queue.get()
+
+            if not reply:
+                continue
+
+            reply_audio = self.tts.synthesize(reply)
+            self.speaker.speak(reply_audio)
