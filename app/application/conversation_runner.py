@@ -16,7 +16,7 @@ class ConversationRunner:
         conversation_service: ConversationService,
         tts: TextToSpeech,
         speaker: Speaker,
-        logger: Logger | None = None,
+        logger: Logger,
         ) -> None:
         self.listener = listener
         self.stt = stt
