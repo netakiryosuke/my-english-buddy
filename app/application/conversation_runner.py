@@ -39,7 +39,8 @@ class ConversationRunner:
             if not self.is_awake:
                 if self._detect_wake_word(user_text):
                     self.is_awake = True
-                continue
+                else:
+                    continue
 
             self._log(f"You: {user_text}")
 
