@@ -32,6 +32,8 @@ class ConversationRunner:
         self.reply_queue: Queue[str] = Queue()
 
     def run(self) -> None:
+        self._start_speaker_thread()
+
         while True:
             audio = self.listener.listen()
             user_text = self.stt.transcribe(audio)
