@@ -1,5 +1,5 @@
 from __future__ import annotations
-from queue import Queue
+from queue import Empty, Queue
 from threading import Event, Thread
 
 from app.audio.listener import Listener
@@ -59,7 +59,7 @@ class ConversationRunner:
 
             self._log(f"Buddy: {reply}")
 
-            self.reply_queue.put(reply)
+            self._publish_reply(reply)
 
     def _log(self, message: str) -> None:
         if self.logger:
@@ -72,6 +72,18 @@ class ConversationRunner:
             wake_word in normalized_text
             for wake_word in self.WAKE_WORDS
         )
+
+    def _publish_reply(self, reply: str) -> None:
+        try:
+            while True:
+                self.reply_queue.get_nowait()
+        except Empty:
+            pass
+
+        try:
+            self.reply_queue.put_nowait(reply)
+        except Exception:
+            pass
 
     def _start_speaker_thread(self) -> None:
         thread = Thread(
