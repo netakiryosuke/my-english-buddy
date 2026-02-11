@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QTextEdit
-from app.ui.conversation_worker import ConversationWorker
+
+from app.presentation.conversation_worker import ConversationWorker
 
 
 class MainWindow(QMainWindow):
