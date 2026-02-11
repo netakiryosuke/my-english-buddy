@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.application.memory_service import MemoryService
+from app.domain.entity.conversation_memory import ConversationMemory
 
 
 class TestMemoryService(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestMemoryService(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.memory = MemoryService(max_messages=10)
+        self.memory = ConversationMemory(max_messages=10)
 
     def test_add_user_message(self):
         """Test adding a user message."""
@@ -104,7 +104,7 @@ class TestMemoryService(unittest.TestCase):
 
     def test_no_max_messages_limit(self):
         """Test memory without max_messages limit."""
-        memory = MemoryService(max_messages=None)
+        memory = ConversationMemory(max_messages=None)
         for i in range(100):
             memory.add_user(f"Message {i}")
         self.assertEqual(len(memory), 100)

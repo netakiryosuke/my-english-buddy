@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from app.application.conversation_service import ConversationService
-from app.application.memory_service import MemoryService
+from app.domain.entity.conversation_memory import ConversationMemory
 from app.interface.chat_client import ChatClient
 
 
@@ -31,10 +31,10 @@ class TestConversationService(unittest.TestCase):
         messages = call_args.kwargs["messages"]
         
         self.assertEqual(len(messages), 2)
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertIn("My English Buddy", messages[0]["content"])
-        self.assertEqual(messages[1]["role"], "user")
-        self.assertEqual(messages[1]["content"], "Hello")
+        self.assertEqual(messages[0].role, "system")
+        self.assertIn("My English Buddy", messages[0].content)
+        self.assertEqual(messages[1].role, "user")
+        self.assertEqual(messages[1].content, "Hello")
 
     def test_reply_stores_messages_in_memory(self):
         """Test that reply stores user and assistant messages in memory."""
@@ -68,13 +68,13 @@ class TestConversationService(unittest.TestCase):
         
         # Should have: system, first user, first assistant, second user
         self.assertEqual(len(messages), 4)
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[1]["role"], "user")
-        self.assertEqual(messages[1]["content"], "First message")
-        self.assertEqual(messages[2]["role"], "assistant")
-        self.assertEqual(messages[2]["content"], "Response")
-        self.assertEqual(messages[3]["role"], "user")
-        self.assertEqual(messages[3]["content"], "Second message")
+        self.assertEqual(messages[0].role, "system")
+        self.assertEqual(messages[1].role, "user")
+        self.assertEqual(messages[1].content, "First message")
+        self.assertEqual(messages[2].role, "assistant")
+        self.assertEqual(messages[2].content, "Response")
+        self.assertEqual(messages[3].role, "user")
+        self.assertEqual(messages[3].content, "Second message")
 
     def test_reply_respects_memory_window(self):
         """Test that reply only sends messages within memory_window."""
@@ -97,11 +97,11 @@ class TestConversationService(unittest.TestCase):
         
         # Should have: system + last 4 messages
         self.assertEqual(len(messages), 5)
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[1]["content"], "Response")
-        self.assertEqual(messages[2]["content"], "Message 1")
-        self.assertEqual(messages[3]["content"], "Response")
-        self.assertEqual(messages[4]["content"], "Message 2")
+        self.assertEqual(messages[0].role, "system")
+        self.assertEqual(messages[1].content, "Response")
+        self.assertEqual(messages[2].content, "Message 1")
+        self.assertEqual(messages[3].content, "Response")
+        self.assertEqual(messages[4].content, "Message 2")
 
     def test_reply_with_many_messages_respects_window(self):
         """Test that memory window works correctly with many messages."""
@@ -127,15 +127,15 @@ class TestConversationService(unittest.TestCase):
         
         # Should have: system + last 6 messages
         self.assertEqual(len(messages), 7)
-        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[0].role, "system")
         
         # Last 6 messages should end with User message 9
-        self.assertEqual(messages[1]["content"], "Reply")
-        self.assertEqual(messages[2]["content"], "User message 7")
-        self.assertEqual(messages[3]["content"], "Reply")
-        self.assertEqual(messages[4]["content"], "User message 8")
-        self.assertEqual(messages[5]["content"], "Reply")
-        self.assertEqual(messages[6]["content"], "User message 9")
+        self.assertEqual(messages[1].content, "Reply")
+        self.assertEqual(messages[2].content, "User message 7")
+        self.assertEqual(messages[3].content, "Reply")
+        self.assertEqual(messages[4].content, "User message 8")
+        self.assertEqual(messages[5].content, "Reply")
+        self.assertEqual(messages[6].content, "User message 9")
 
     def test_reply_empty_string_returns_empty(self):
         """Test that empty string returns empty response."""
@@ -159,8 +159,8 @@ class TestConversationService(unittest.TestCase):
         call_args = self.mock_chat_client.complete_messages.call_args
         messages = call_args.kwargs["messages"]
         
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[0]["content"], "Custom prompt")
+        self.assertEqual(messages[0].role, "system")
+        self.assertEqual(messages[0].content, "Custom prompt")
 
     def test_no_system_prompt(self):
         """Test that conversation works without system prompt."""
@@ -174,12 +174,12 @@ class TestConversationService(unittest.TestCase):
         
         # Should only have user message, no system message
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0]["role"], "user")
-        self.assertEqual(messages[0]["content"], "Hello")
+        self.assertEqual(messages[0].role, "user")
+        self.assertEqual(messages[0].content, "Hello")
 
     def test_custom_memory_service(self):
         """Test that custom memory service can be provided."""
-        custom_memory = MemoryService(max_messages=5)
+        custom_memory = ConversationMemory(max_messages=5)
         service = ConversationService(
             chat_client=self.mock_chat_client,
             memory_service=custom_memory
