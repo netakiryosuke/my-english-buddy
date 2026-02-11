@@ -5,17 +5,16 @@ from typing import Sequence, TypeAlias
 from openai import OpenAI
 
 from app.domain.vo.chat_message import ChatMessage
-from app.interface.chat_client import ChatClient
 
 try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
 
     ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
-except (ImportError, ModuleNotFoundError, AttributeError, TypeError):
+except Exception:
     ChatCompletionMessageParam: TypeAlias = dict[str, str]
 
 
-class OpenAIChatClient(ChatClient):
+class OpenAIChatClient:
     def __init__(self, client: OpenAI, model: str):
         self._client = client
         self._model = model

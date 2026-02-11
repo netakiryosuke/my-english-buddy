@@ -32,6 +32,6 @@ class ConversationService:
         for recent_message in self.conversation_memory.recent(self.memory_window):
             messages.append(recent_message)
 
-        reply = str(self.chat_client.complete_messages(messages=messages))
+        reply = self.chat_client.complete_messages(messages=messages)
         self.conversation_memory.add_assistant(reply)
         return reply
