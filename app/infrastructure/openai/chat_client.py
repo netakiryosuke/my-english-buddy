@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import Sequence, TypeAlias
 
 from openai import OpenAI
+
+from app.domain.vo.chat_message import ChatMessage
 
 try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
@@ -18,16 +20,19 @@ class OpenAIChatClient:
         self._model = model
 
     def complete(self, *, system: str | None, user: str) -> str:
-        messages: list[ChatCompletionMessageParam] = []
+        messages: list[ChatMessage] = []
         if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": user})
+            messages.append(ChatMessage(role="system", content=system))
+        messages.append(ChatMessage(role="user", content=user))
         return self.complete_messages(messages=messages)
 
-    def complete_messages(self, *, messages: list[ChatCompletionMessageParam]) -> str:
+    def complete_messages(self, *, messages: Sequence[ChatMessage]) -> str:
+        openai_messages: list[ChatCompletionMessageParam] = [
+            {"role": message.role, "content": message.content} for message in messages
+        ]
         response = self._client.chat.completions.create(
             model=self._model,
-            messages=messages,
+            messages=openai_messages,
         )
 
         choices = response.choices

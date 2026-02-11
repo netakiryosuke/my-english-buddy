@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal, Protocol, Sequence, TypedDict
+from typing import Protocol, Sequence
 
-
-ChatRole = Literal["system", "user", "assistant"]
-
-
-class ChatMessage(TypedDict):
-    role: ChatRole
-    content: str
+from app.domain.vo.chat_message import ChatMessage, ChatRole
 
 
 class ChatClient(Protocol):
@@ -19,3 +13,6 @@ class ChatClient(Protocol):
     def complete_messages(self, *, messages: Sequence[ChatMessage]) -> str:
         """Return a completion given chat history messages."""
         ...
+
+
+__all__ = ["ChatClient", "ChatMessage", "ChatRole"]

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from queue import Empty, Queue
 from threading import Event, Thread
 

@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.application.memory_service import MemoryService
-from app.interface.chat_client import ChatClient, ChatMessage
+from app.domain.entity.conversation_memory import ConversationMemory
+from app.domain.vo.chat_message import ChatMessage
+from app.interface.chat_client import ChatClient
 
 
 @dataclass
 class ConversationService:
     chat_client: ChatClient
-    memory: MemoryService = field(default_factory=lambda: MemoryService(max_messages=50))
+    conversation_memory: ConversationMemory = field(
+        default_factory=lambda: ConversationMemory(max_messages=50)
+    )
     memory_window: int = 20
     system_prompt: str | None = (
         "You are My English Buddy. Answer in clear, friendly English. "
@@ -21,14 +24,14 @@ class ConversationService:
         if not user_text:
             return ""
 
-        self.memory.add_user(user_text)
+        self.conversation_memory.add_user(user_text)
 
         messages: list[ChatMessage] = []
         if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-        for recent_message in self.memory.recent(self.memory_window):
-            messages.append({"role": recent_message.role, "content": recent_message.content})
+            messages.append(ChatMessage(role="system", content=self.system_prompt))
+        for recent_message in self.conversation_memory.recent(self.memory_window):
+            messages.append(recent_message)
 
         reply = self.chat_client.complete_messages(messages=messages)
-        self.memory.add_assistant(reply)
+        self.conversation_memory.add_assistant(reply)
         return reply

@@ -1,24 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from app.domain.vo.chat_message import ChatMessage, ChatRole
 
 
-ChatRole = Literal["system", "user", "assistant"]
-
-
-@dataclass(frozen=True)
-class ChatMessage:
-    role: ChatRole
-    content: str
-
-
-class MemoryService:
-    """In-memory, short-term conversation memory.
-
-    This memory is ephemeral and cleared on process restart.
-    """
-
+class ConversationMemory:
     def __init__(self, *, max_messages: int | None = None):
         self._max_messages = max_messages
         self._messages: list[ChatMessage] = []
