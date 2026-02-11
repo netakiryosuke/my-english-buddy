@@ -6,8 +6,8 @@ from openai import OpenAI
 
 from app.application.conversation_runner import ConversationRunner
 from app.application.conversation_service import ConversationService
-from app.audio.listener import Listener
-from app.audio.speaker import Speaker
+from app.infrastructure.audio.listener import Listener
+from app.infrastructure.audio.speaker import Speaker
 from app.config import AppConfig
 from app.infrastructure.openai.chat_client import OpenAIChatClient
 from app.infrastructure.openai.speech_to_text import SpeechToText as OpenAISpeechToText
