@@ -8,8 +8,7 @@ try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
 
     ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
-except Exception:  # pragma: no cover
-    # Keep runtime working even if OpenAI SDK's type exports move.
+except Exception:
     ChatCompletionMessageParam: TypeAlias = dict[str, str]
 
 

@@ -1,8 +1,8 @@
 from threading import Event
 import time
 
-import sounddevice as sd
 import numpy as np
+import sounddevice as sd
 
 
 class Speaker:
@@ -15,14 +15,13 @@ class Speaker:
         stop_event: Event | None = None,
         chunk_size: int = 1024,
     ) -> None:
-        # Reshape for sounddevice compatibility
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
 
         with sd.OutputStream(
             samplerate=self.sample_rate,
             channels=1,
-            dtype='float32'
+            dtype="float32",
         ) as stream:
             time.sleep(0.1)
 
@@ -30,5 +29,5 @@ class Speaker:
                 if stop_event and stop_event.is_set():
                     break
 
-                chunk = audio[i:i + chunk_size]
+                chunk = audio[i : i + chunk_size]
                 stream.write(chunk)

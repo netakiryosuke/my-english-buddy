@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 from app.application.conversation_service import ConversationService
 from app.application.memory_service import MemoryService
-from app.llm.openai_client import OpenAIChatClient
+from app.interface.chat_client import ChatClient
 
 
 class TestConversationService(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestConversationService(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_chat_client = MagicMock(spec=OpenAIChatClient)
+        self.mock_chat_client = MagicMock(spec=ChatClient)
         self.service = ConversationService(chat_client=self.mock_chat_client)
 
     def test_reply_sends_system_and_user_message(self):

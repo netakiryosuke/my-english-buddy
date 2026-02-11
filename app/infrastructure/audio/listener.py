@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import sounddevice as sd
 import numpy as np
+import sounddevice as sd
 
 
 class Listener:
@@ -23,7 +23,6 @@ class Listener:
         self.noise_threshold_multiplier = noise_threshold_multiplier
 
     def _calibrate_noise_level(self, stream) -> float:
-        """Measure ambient noise level and return threshold"""
         noise_samples = []
         calibration_chunks = int(self.calibration_duration / self.chunk_duration)
 
@@ -34,7 +33,7 @@ class Listener:
 
         if not noise_samples:
             raise RuntimeError(
-                "Failed to calibrate noise level: no audio samples were collected."  
+                "Failed to calibrate noise level: no audio samples were collected."
             )
 
         noise_level = np.mean(noise_samples)
@@ -53,10 +52,7 @@ class Listener:
             threshold = self._calibrate_noise_level(stream)
 
             while True:
-                chunk, _ = stream.read(
-                    int(self.sample_rate * self.chunk_duration)
-                )
-
+                chunk, _ = stream.read(int(self.sample_rate * self.chunk_duration))
                 volume = float(np.abs(chunk).mean())
 
                 if volume >= threshold:

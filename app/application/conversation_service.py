@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from app.application.memory_service import MemoryService
-from app.llm.openai_client import OpenAIChatClient
+from app.interface.chat_client import ChatClient, ChatMessage
 
 
 @dataclass
 class ConversationService:
-    chat_client: OpenAIChatClient
+    chat_client: ChatClient
     memory: MemoryService = field(default_factory=lambda: MemoryService(max_messages=50))
     memory_window: int = 20
     system_prompt: str | None = (
@@ -23,7 +23,7 @@ class ConversationService:
 
         self.memory.add_user(user_text)
 
-        messages: list[dict[str, str]] = []
+        messages: list[ChatMessage] = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
         for recent_message in self.memory.recent(self.memory_window):

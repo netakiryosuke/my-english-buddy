@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
+
 import numpy as np
-from scipy.io.wavfile import write
 from openai import OpenAI
+from scipy.io.wavfile import write
 
 
 class SpeechToText:
