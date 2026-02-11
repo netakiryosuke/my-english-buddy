@@ -43,8 +43,8 @@ class TestConversationService(unittest.TestCase):
         self.service.reply("Hello")
         
         # Check memory contains both messages
-        self.assertEqual(len(self.service.memory), 2)
-        messages = self.service.memory.recent(2)
+        self.assertEqual(len(self.service.memory_service), 2)
+        messages = self.service.memory_service.recent(2)
         self.assertEqual(messages[0].role, "user")
         self.assertEqual(messages[0].content, "Hello")
         self.assertEqual(messages[1].role, "assistant")
@@ -182,10 +182,10 @@ class TestConversationService(unittest.TestCase):
         custom_memory = MemoryService(max_messages=5)
         service = ConversationService(
             chat_client=self.mock_chat_client,
-            memory=custom_memory
+            memory_service=custom_memory
         )
         
-        self.assertIs(service.memory, custom_memory)
+        self.assertIs(service.memory_service, custom_memory)
 
 
 if __name__ == "__main__":
