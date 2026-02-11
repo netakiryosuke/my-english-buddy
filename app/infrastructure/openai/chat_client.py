@@ -8,7 +8,7 @@ try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
 
     ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
-except Exception:  # pragma: no cover
+except Exception:
     ChatCompletionMessageParam: TypeAlias = dict[str, str]
 
 
