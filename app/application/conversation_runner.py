@@ -1,4 +1,6 @@
 from __future__ import annotations
+from queue import Empty, Queue
+from threading import Event, Thread
 
 from app.audio.listener import Listener
 from app.audio.speech_to_text import SpeechToText
@@ -27,14 +29,20 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self.is_awake = False
+        self.reply_queue: Queue[str] = Queue(maxsize=1)
+        self.stop_speaking_event = Event()
 
     def run(self) -> None:
+        self._start_speaker_thread()
+
         while True:
             audio = self.listener.listen()
             user_text = self.stt.transcribe(audio)
 
             if not user_text:
                 continue
+
+            self.stop_speaking_event.set()
 
             if not self.is_awake:
                 if self._detect_wake_word(user_text):
@@ -51,8 +59,7 @@ class ConversationRunner:
 
             self._log(f"Buddy: {reply}")
 
-            reply_audio = self.tts.synthesize(reply)
-            self.speaker.speak(reply_audio)
+            self._publish_reply(reply)
 
     def _log(self, message: str) -> None:
         if self.logger:
@@ -65,3 +72,40 @@ class ConversationRunner:
             wake_word in normalized_text
             for wake_word in self.WAKE_WORDS
         )
+
+    def _publish_reply(self, reply: str) -> None:
+        try:
+            while True:
+                self.reply_queue.get_nowait()
+        except Empty:
+            pass
+
+        try:
+            self.reply_queue.put_nowait(reply)
+        except Exception:
+            pass
+
+    def _start_speaker_thread(self) -> None:
+        thread = Thread(
+            target=self._speaker_loop,
+            daemon=True,
+        )
+        thread.start()
+
+    def _speaker_loop(self) -> None:
+        while True:
+            reply = self.reply_queue.get()
+
+            if not reply:
+                continue
+
+            try:
+                self.stop_speaking_event.clear()
+
+                reply_audio = self.tts.synthesize(reply)
+                self.speaker.speak(reply_audio, stop_event=self.stop_speaking_event)
+            except Exception as e:
+                self._log(f"Error in speaker loop: {e}")
+
+                self.stop_speaking_event.set()
+                continue
