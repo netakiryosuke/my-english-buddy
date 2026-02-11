@@ -10,7 +10,7 @@ from app.interface.chat_client import ChatClient
 @dataclass
 class ConversationService:
     chat_client: ChatClient
-    memory_service: ConversationMemory = field(
+    conversation_memory: ConversationMemory = field(
         default_factory=lambda: ConversationMemory(max_messages=50)
     )
     memory_window: int = 20
@@ -24,14 +24,14 @@ class ConversationService:
         if not user_text:
             return ""
 
-        self.memory_service.add_user(user_text)
+        self.conversation_memory.add_user(user_text)
 
         messages: list[ChatMessage] = []
         if self.system_prompt:
             messages.append(ChatMessage(role="system", content=self.system_prompt))
-        for recent_message in self.memory_service.recent(self.memory_window):
+        for recent_message in self.conversation_memory.recent(self.memory_window):
             messages.append(recent_message)
 
         reply = str(self.chat_client.complete_messages(messages=messages))
-        self.memory_service.add_assistant(reply)
+        self.conversation_memory.add_assistant(reply)
         return reply
