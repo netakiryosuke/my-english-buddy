@@ -5,7 +5,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from app.config import AppConfig
-from app.container import build_container
+from app.di_container import build_container
 from app.ui.conversation_worker import ConversationWorker
 from app.ui.main_window import MainWindow
 from app.utils.args import parse_args
