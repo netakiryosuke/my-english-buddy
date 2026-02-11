@@ -1,4 +1,4 @@
-"""Unit tests for MemoryService."""
+"""Unit tests for ConversationMemory."""
 from __future__ import annotations
 
 import unittest
@@ -6,8 +6,8 @@ import unittest
 from app.domain.entity.conversation_memory import ConversationMemory
 
 
-class TestMemoryService(unittest.TestCase):
-    """Test cases for MemoryService."""
+class TestConversationMemory(unittest.TestCase):
+    """Test cases for ConversationMemory."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -37,7 +37,7 @@ class TestMemoryService(unittest.TestCase):
         self.memory.add_assistant("Hi!")
         self.memory.add_user("How are you?")
         self.memory.add_assistant("I'm good, thanks!")
-        
+
         self.assertEqual(len(self.memory), 4)
         messages = self.memory.recent(4)
         self.assertEqual(len(messages), 4)
@@ -50,7 +50,7 @@ class TestMemoryService(unittest.TestCase):
         """Test retrieving recent messages."""
         for i in range(5):
             self.memory.add_user(f"Message {i}")
-        
+
         recent = self.memory.recent(3)
         self.assertEqual(len(recent), 3)
         self.assertEqual(recent[0].content, "Message 2")
@@ -73,7 +73,7 @@ class TestMemoryService(unittest.TestCase):
         """Test that memory respects max_messages limit."""
         for i in range(15):
             self.memory.add_user(f"Message {i}")
-        
+
         self.assertEqual(len(self.memory), 10)
         messages = self.memory.recent(10)
         # Should have messages 5-14 (the last 10)
@@ -85,7 +85,7 @@ class TestMemoryService(unittest.TestCase):
         self.memory.add_user("Hello")
         self.memory.add_assistant("Hi")
         self.assertEqual(len(self.memory), 2)
-        
+
         self.memory.clear()
         self.assertEqual(len(self.memory), 0)
         self.assertEqual(len(self.memory.recent(10)), 0)
