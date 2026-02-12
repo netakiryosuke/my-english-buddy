@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 
 from openai import OpenAI
 
@@ -74,6 +75,7 @@ def build_container(
         tts=tts,
         speaker=speaker,
         logger=logger,
+        debug=os.getenv("MY_ENGLISH_BUDDY_DEBUG") in {"1", "true", "True", "yes", "YES"},
     )
 
     return AppContainer(
