@@ -29,7 +29,12 @@ class ConversationService:
             self.commit_assistant_reply(reply)
         return reply
 
-    def prepare_reply(self, user_text: str) -> str:
+    def prepare_reply(
+        self,
+        user_text: str,
+        *,
+        ephemeral_system_prompt: str | None = None,
+    ) -> str:
         """Generate an assistant reply but do not store it in memory yet.
 
         This enables two-phase commit: only commit the assistant reply after it was
@@ -45,6 +50,10 @@ class ConversationService:
             messages: list[ChatMessage] = []
             if self.system_prompt:
                 messages.append(ChatMessage(role="system", content=self.system_prompt))
+            if ephemeral_system_prompt:
+                messages.append(
+                    ChatMessage(role="system", content=ephemeral_system_prompt.strip())
+                )
             messages.extend(self.conversation_memory.recent(self.memory_window))
 
         reply = cast(str, self.chat_client.complete_messages(messages=messages))

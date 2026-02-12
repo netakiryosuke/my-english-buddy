@@ -102,15 +102,20 @@ class ConversationRunner:
 
             self._log(f"You: {user_text}")
 
-            chat_user_text = (
-                self._format_interrupted_user_text(user_text)
+            ephemeral_system_prompt = (
+                "The user started speaking while the assistant was speaking. "
+                "Treat the user's next message as an interruption that may be a correction or a follow-up question. "
+                "Respond naturally."
                 if interrupted
-                else user_text
+                else None
             )
 
             request_id = self._next_request_id()
             self._debug_log(f"Request created: request_id={request_id}")
-            reply = self.conversation_service.prepare_reply(chat_user_text)
+            reply = self.conversation_service.prepare_reply(
+                user_text,
+                ephemeral_system_prompt=ephemeral_system_prompt,
+            )
             if not reply or not reply.strip():
                 self._debug_log(f"Empty reply (request_id={request_id})")
                 return
@@ -141,16 +146,6 @@ class ConversationRunner:
             self._debug_log("Speech start detected during speaking; stopping speaker")
             self.stop_speaking_event.set()
             self._interrupt_pending_event.set()
-
-    @staticmethod
-    def _format_interrupted_user_text(user_text: str) -> str:
-        # Do not force a classification (correction vs new question).
-        # Provide neutral context so the assistant can respond naturally.
-        return (
-            'I spoke while you were speaking. My latest utterance is: "'
-            + user_text.strip()
-            + '". Please respond appropriately; it may be a correction or a follow-up question.'
-        )
 
     def _log(self, message: str) -> None:
         if self.logger:
