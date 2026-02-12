@@ -35,11 +35,6 @@ class ConversationService:
         *,
         ephemeral_system_prompt: str | None = None,
     ) -> str:
-        """Generate an assistant reply but do not store it in memory yet.
-
-        This enables two-phase commit: only commit the assistant reply after it was
-        fully spoken to the user.
-        """
         user_text = user_text.strip()
         if not user_text:
             return ""
