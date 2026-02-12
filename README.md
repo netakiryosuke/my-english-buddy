@@ -85,7 +85,7 @@ uv run python -m app.main --env-file ""
 7. **Playback**: The speech is played through your speakers/headphones
 8. **Interruption**: You can interrupt the assistant by speaking while it's talking
 
-The conversation memory keeps the last 20 messages in context for generating replies, and stores up to 50 messages total during the session. Memory is cleared when the app restarts.
+The conversation memory stores up to 50 messages total during the session. When generating replies, it uses the most recent 20 messages as context to keep the conversation focused. Memory is cleared when the app restarts.
 
 ## Environment Variables
 
