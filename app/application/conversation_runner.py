@@ -165,14 +165,15 @@ class ConversationRunner:
         if self._listener_thread and self._listener_thread.is_alive():
             return
 
-        self._listener_thread = self.listener.start_utterance_listener(
+        self._listener_thread = self.listener.listen(
             utterance_queue=self.utterance_queue,
             stop_event=self.stop_listening_event,
             on_speech_start=self._on_user_speech_start,
         )
 
     def _on_user_speech_start(self) -> None:
-        # Called from Listener.listen() when speech starts; should be fast and non-blocking.
+        # Called from Listener's background listening loop when speech starts;
+        # should be fast and non-blocking.
         if self.is_speaking_event.is_set():
             self.stop_speaking_event.set()
             self._interrupt_pending_event.set()

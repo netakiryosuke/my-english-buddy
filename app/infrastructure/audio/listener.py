@@ -44,48 +44,17 @@ class Listener:
         noise_level = np.mean(noise_samples)
         return noise_level * self.noise_threshold_multiplier
 
-    def listen(self, *, on_speech_start: Callable[[], None] | None = None) -> np.ndarray:
-        frames: list[np.ndarray] = []
-        silent_time = 0.0
-        speech_detected = False
-        started_notified = False
-
-        with sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=self.channels,
-            dtype="float32",
-        ) as stream:
-            threshold = self._calibrate_noise_level(stream)
-
-            while True:
-                chunk, _ = stream.read(int(self.sample_rate * self.chunk_duration))
-                volume = float(np.abs(chunk).mean())
-
-                if volume >= threshold:
-                    silent_time = 0.0
-                    if not speech_detected:
-                        speech_detected = True
-                        if (not started_notified) and on_speech_start:
-                            started_notified = True
-                            with suppress(Exception):
-                                on_speech_start()
-                    frames.append(chunk)
-                elif speech_detected:
-                    silent_time += self.chunk_duration
-                    frames.append(chunk)
-
-                if speech_detected and silent_time >= self.silence_duration:
-                    break
-
-        return np.concatenate(frames, axis=0)
-
-    def start_utterance_listener(
+    def listen(
         self,
         *,
         utterance_queue: Queue[np.ndarray],
         stop_event: Event,
         on_speech_start: Callable[[], None] | None = None,
     ) -> Thread:
+        """Listen continuously and publish utterances to a queue.
+
+        This spawns a daemon thread and returns it.
+        """
         thread = Thread(
             target=self._utterance_listen_loop,
             kwargs={
