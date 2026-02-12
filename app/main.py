@@ -30,6 +30,7 @@ def main(argv: list[str] | None = None) -> int:
 
     app = QApplication(sys.argv)
     app.aboutToQuit.connect(container.logger.save)
+    app.aboutToQuit.connect(container.speaker.close)
 
     window = MainWindow(conversation_worker)
     window.show()
