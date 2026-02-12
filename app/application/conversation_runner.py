@@ -126,7 +126,7 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
                 continue
