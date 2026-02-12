@@ -20,7 +20,7 @@ This project is still **work in progress**. The README is intentionally practica
 Current limitations (expected at this stage):
 
 - Memory is not saved between sessions (cleared on restart)
-- No persistent storage or conversation history export
+- Conversation history is exported to `logs/` directory as text files, but cannot be re-imported
 - TTS model and voice are not configurable via environment variables
 
 ## Requirements
@@ -140,7 +140,7 @@ uv sync  # Install test dependencies
 uv run pytest
 ```
 
-Note: Tests do not cover infrastructure/GUI layers to keep them fast and dependency-free.
+Note: Test coverage is currently limited to core application logic. Infrastructure and GUI layer tests are planned for future development.
 
 ## Troubleshooting
 
@@ -170,13 +170,3 @@ Note: Tests do not cover infrastructure/GUI layers to keep them fast and depende
 - Ensure you say "buddy" clearly at the beginning
 - Check the GUI log window to see if your speech is being transcribed
 - The wake word only needs to be said once per session
-
-## Example: Custom Prompt
-
-```bash
-cp prompt.txt.example prompt.txt
-
-# or create your own prompt file
-echo "You are an English tutor. Be concise. Correct mistakes gently." > prompt.txt
-uv run python -m app.main
-```
