@@ -43,6 +43,7 @@ class ConversationRunner:
         self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
         self.is_speaking_event = Event()
+        self._interrupt_pending_event = Event()
         self._state_lock = Lock()
         self._request_id = 0
         self._latest_request_id = 0
@@ -56,15 +57,19 @@ class ConversationRunner:
         while True:
             audio = self.utterance_queue.get()
 
+            interrupted = self._interrupt_pending_event.is_set()
+            if interrupted:
+                self._interrupt_pending_event.clear()
+
             # Limit concurrent OpenAI calls.
             self._inflight_semaphore.acquire()
             Thread(
                 target=self._process_utterance,
-                args=(audio,),
+                args=(audio, interrupted),
                 daemon=True,
             ).start()
 
-    def _process_utterance(self, audio) -> None:
+    def _process_utterance(self, audio, interrupted: bool) -> None:
         try:
             user_text = self.stt.transcribe(audio)
             if not user_text:
@@ -85,8 +90,14 @@ class ConversationRunner:
 
             self._log(f"You: {user_text}")
 
+            chat_user_text = (
+                self._format_interrupted_user_text(user_text)
+                if interrupted
+                else user_text
+            )
+
             request_id = self._next_request_id()
-            reply = self.conversation_service.prepare_reply(user_text)
+            reply = self.conversation_service.prepare_reply(chat_user_text)
             if not reply or not reply.strip():
                 return
 
@@ -113,6 +124,17 @@ class ConversationRunner:
         # Called from Listener.listen() when speech starts; should be fast and non-blocking.
         if self.is_speaking_event.is_set():
             self.stop_speaking_event.set()
+            self._interrupt_pending_event.set()
+
+    @staticmethod
+    def _format_interrupted_user_text(user_text: str) -> str:
+        # Do not force a classification (correction vs new question).
+        # Provide neutral context so the assistant can respond naturally.
+        return (
+            'I spoke while you were speaking. My latest utterance is: "'
+            + user_text.strip()
+            + '". Please respond appropriately; it may be a correction or a follow-up question.'
+        )
 
     def _log(self, message: str) -> None:
         if self.logger:
