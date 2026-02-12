@@ -10,7 +10,7 @@ This project is still **work in progress**. The README is intentionally practica
 
 - **Interface**: GUI application (PySide6) with conversation log display
 - **Input**: continuous microphone listening with automatic speech detection
-- **Wake Word**: say "buddy" to activate the conversation (first time only)
+- **Wake Word**: say "buddy" to activate the conversation (once per session)
 - **Transcription**: OpenAI audio transcription API (hard-coded to `gpt-4o-mini-transcribe`)
 - **Reply**: OpenAI Chat Completions API using `OPENAI_MODEL`
 - **Speech Output**: OpenAI Text-to-Speech API (hard-coded to `gpt-4o-mini-tts` with `alloy` voice)
@@ -84,6 +84,8 @@ uv run python -m app.main --env-file ""
 6. **Speech Output**: The assistant's reply is synthesized to speech using OpenAI Text-to-Speech API
 7. **Playback**: The speech is played through your speakers/headphones
 8. **Interruption**: You can interrupt the assistant by speaking while it's talking
+
+**Memory Management:**
 
 The conversation memory stores up to 50 messages total during the session. When generating replies, it uses the most recent 20 messages as context to keep the conversation focused. Memory is cleared when the app restarts.
 
