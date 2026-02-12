@@ -8,11 +8,11 @@ from app.domain.vo.chat_message import ChatMessage, ChatRole
 class ChatClient(Protocol):
     def complete(self, *, system: str | None, user: str) -> str:
         """Return a single assistant message for a user input."""
-        return ""
+        ...
 
     def complete_messages(self, *, messages: Sequence[ChatMessage]) -> str:
         """Return a completion given chat history messages."""
-        return ""
+        ...
 
 
 __all__ = ["ChatClient", "ChatMessage", "ChatRole"]
