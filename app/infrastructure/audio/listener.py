@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import suppress
+
 import numpy as np
 import sounddevice as sd
 
@@ -39,10 +42,11 @@ class Listener:
         noise_level = np.mean(noise_samples)
         return noise_level * self.noise_threshold_multiplier
 
-    def listen(self) -> np.ndarray:
+    def listen(self, *, on_speech_start: Callable[[], None] | None = None) -> np.ndarray:
         frames: list[np.ndarray] = []
         silent_time = 0.0
         speech_detected = False
+        started_notified = False
 
         with sd.InputStream(
             samplerate=self.sample_rate,
@@ -59,6 +63,10 @@ class Listener:
                     silent_time = 0.0
                     if not speech_detected:
                         speech_detected = True
+                        if (not started_notified) and on_speech_start:
+                            started_notified = True
+                            with suppress(Exception):
+                                on_speech_start()
                     frames.append(chunk)
                 elif speech_detected:
                     silent_time += self.chunk_duration

@@ -14,7 +14,7 @@ class Speaker:
         audio: np.ndarray,
         stop_event: Event | None = None,
         chunk_size: int = 1024,
-    ) -> None:
+    ) -> bool:
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
 
@@ -27,7 +27,9 @@ class Speaker:
 
             for i in range(0, len(audio), chunk_size):
                 if stop_event and stop_event.is_set():
-                    break
+                    return False
 
                 chunk = audio[i : i + chunk_size]
                 stream.write(chunk)
+
+            return True
