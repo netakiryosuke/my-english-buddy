@@ -14,20 +14,25 @@ class Speaker:
         audio: np.ndarray,
         stop_event: Event | None = None,
         chunk_size: int = 1024,
-    ) -> None:
+    ) -> bool:
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
 
-        with sd.OutputStream(
-            samplerate=self.sample_rate,
-            channels=1,
-            dtype="float32",
-        ) as stream:
-            time.sleep(0.1)
+        try:
+            with sd.OutputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="float32",
+            ) as stream:
+                time.sleep(0.1)
 
-            for i in range(0, len(audio), chunk_size):
-                if stop_event and stop_event.is_set():
-                    break
+                for i in range(0, len(audio), chunk_size):
+                    if stop_event and stop_event.is_set():
+                        return False
 
-                chunk = audio[i : i + chunk_size]
-                stream.write(chunk)
+                    chunk = audio[i : i + chunk_size]
+                    stream.write(chunk)
+
+                return True
+        except sd.PortAudioError as e:
+            raise OSError(str(e)) from e

@@ -3,8 +3,10 @@ from __future__ import annotations
 import io
 
 import numpy as np
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from scipy.io.wavfile import write
+
+from app.interface.errors import SpeechToTextError
 
 
 class SpeechToText:
@@ -32,12 +34,14 @@ class SpeechToText:
         write(wav_buffer, self.sample_rate, audio_int16)
         wav_buffer.seek(0)
 
-        response = self.client.audio.transcriptions.create(
-            file=("speech.wav", wav_buffer),
-            model=self.model,
-        )
-
-        return response.text.strip()
+        try:
+            response = self.client.audio.transcriptions.create(
+                file=("speech.wav", wav_buffer),
+                model=self.model,
+            )
+            return response.text.strip()
+        except OpenAIError as e:
+            raise SpeechToTextError(str(e)) from e
 
     def _is_silent(self, audio: np.ndarray) -> bool:
         audio_float = np.asarray(audio, dtype=np.float32)
