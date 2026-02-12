@@ -66,9 +66,12 @@ class ConversationRunner:
         while True:
             audio: np.ndarray = self.utterance_queue.get()
 
-            interrupted = self._interrupt_pending_event.is_set()
-            if interrupted:
-                self._interrupt_pending_event.clear()
+            # Capture-and-clear atomically to avoid losing an interrupt that might be set
+            # between `is_set()` and `clear()` from the listener thread.
+            with self._state_lock:
+                interrupted = self._interrupt_pending_event.is_set()
+                if interrupted:
+                    self._interrupt_pending_event.clear()
 
             interrupted_assistant_text: str | None = None
             if interrupted:
@@ -176,7 +179,8 @@ class ConversationRunner:
         # should be fast and non-blocking.
         if self.is_speaking_event.is_set():
             self.stop_speaking_event.set()
-            self._interrupt_pending_event.set()
+            with self._state_lock:
+                self._interrupt_pending_event.set()
 
     def _log(self, message: str) -> None:
         if self.logger:
