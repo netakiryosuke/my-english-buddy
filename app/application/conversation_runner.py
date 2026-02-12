@@ -86,7 +86,7 @@ class ConversationRunner:
             self._log(f"You: {user_text}")
 
             request_id = self._next_request_id()
-            reply = self.conversation_service.reply(user_text)
+            reply = self.conversation_service.prepare_reply(user_text)
             if not reply or not reply.strip():
                 return
 
@@ -182,6 +182,10 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
+                else:
+                    with self._state_lock:
+                        if item.request_id == self._latest_request_id:
+                            self.conversation_service.commit_assistant_reply(item.text)
             except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
