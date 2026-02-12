@@ -4,6 +4,9 @@ from queue import Empty, Full, Queue
 from threading import Event, Thread
 from typing import NamedTuple
 
+import sounddevice as sd
+from openai import OpenAIError
+
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
 from app.application.conversation_service import ConversationService
@@ -36,16 +39,20 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self.is_awake = False
+        self.utterance_queue: Queue = Queue(maxsize=3)
+        self.stop_listening_event = Event()
         self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
         self.is_speaking_event = Event()
         self._request_id = 0
+        self._listener_thread: Thread | None = None
 
     def run(self) -> None:
         self._start_speaker_thread()
+        self._start_listener_thread()
 
         while True:
-            audio = self.listener.listen(on_speech_start=self._on_user_speech_start)
+            audio = self.utterance_queue.get()
             user_text = self.stt.transcribe(audio)
 
             if not user_text:
@@ -70,6 +77,16 @@ class ConversationRunner:
 
             self._log(f"Buddy: {reply}")
             self._publish_reply(reply)
+
+    def _start_listener_thread(self) -> None:
+        if self._listener_thread and self._listener_thread.is_alive():
+            return
+
+        self._listener_thread = self.listener.start_utterance_listener(
+            utterance_queue=self.utterance_queue,
+            stop_event=self.stop_listening_event,
+            on_speech_start=self._on_user_speech_start,
+        )
 
     def _on_user_speech_start(self) -> None:
         # Called from Listener.listen() when speech starts; should be fast and non-blocking.
@@ -126,7 +143,7 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
-            except Exception as e:
+            except (OpenAIError, OSError, RuntimeError, ValueError, sd.PortAudioError) as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
                 continue
