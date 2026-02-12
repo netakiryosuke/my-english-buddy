@@ -251,9 +251,10 @@ class ConversationRunner:
                         self._last_interrupted_assistant_text = item.text
                         self._last_interrupted_at = monotonic()
                 else:
-                    with self._state_lock:
-                        if item.request_id == self._latest_request_id:
-                            self.conversation_service.commit_assistant_reply(item.text)
+                    # If playback completed, the user heard this reply, so commit it to memory.
+                    # Do not gate on `_latest_request_id` here: it can change while speaking,
+                    # which would otherwise create a "heard but not remembered" inconsistency.
+                    self.conversation_service.commit_assistant_reply(item.text)
             except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
