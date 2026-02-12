@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from queue import Empty, Full, Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
+from time import monotonic
 from typing import NamedTuple
 
 from app.interface.errors import ExternalServiceError
@@ -53,6 +54,12 @@ class ConversationRunner:
         self._inflight_semaphore = BoundedSemaphore(value=2)
         self._listener_thread: Thread | None = None
 
+        # Used to provide context to the next interrupted user utterance without
+        # committing it to memory.
+        self._last_interrupted_assistant_text: str | None = None
+        self._last_interrupted_at: float = 0.0
+        self._interrupted_context_ttl_seconds: float = 8.0
+
     def run(self) -> None:
         self._start_speaker_thread()
         self._start_listener_thread()
@@ -65,17 +72,35 @@ class ConversationRunner:
             if interrupted:
                 self._interrupt_pending_event.clear()
 
+            interrupted_assistant_text: str | None = None
+            if interrupted:
+                with self._state_lock:
+                    if (
+                        self._last_interrupted_assistant_text
+                        and (monotonic() - self._last_interrupted_at)
+                        <= self._interrupted_context_ttl_seconds
+                    ):
+                        interrupted_assistant_text = self._last_interrupted_assistant_text
+                    # Consume it once; this context is only for the next interrupted utterance.
+                    self._last_interrupted_assistant_text = None
+                    self._last_interrupted_at = 0.0
+
             self._debug_log(f"Utterance received (interrupted={interrupted})")
 
             # Limit concurrent OpenAI calls.
             self._inflight_semaphore.acquire()
             Thread(
                 target=self._process_utterance,
-                args=(audio, interrupted),
+                args=(audio, interrupted, interrupted_assistant_text),
                 daemon=True,
             ).start()
 
-    def _process_utterance(self, audio, interrupted: bool) -> None:
+    def _process_utterance(
+        self,
+        audio,
+        interrupted: bool,
+        interrupted_assistant_text: str | None,
+    ) -> None:
         try:
             self._debug_log(f"Process utterance start (interrupted={interrupted})")
             user_text = self.stt.transcribe(audio)
@@ -109,6 +134,19 @@ class ConversationRunner:
                 if interrupted
                 else None
             )
+
+            if interrupted and interrupted_assistant_text:
+                # Keep this provider-agnostic and do not commit it to memory.
+                # Tell the model to ignore it if irrelevant to avoid topic pollution.
+                ephemeral_system_prompt = (
+                    (ephemeral_system_prompt or "")
+                    + "\n\n"
+                    + "The assistant was in the middle of saying: \""
+                    + interrupted_assistant_text.strip()
+                    + "\". "
+                    + "If the user's message seems to respond to or correct that, use it as context; "
+                    + "otherwise ignore it and answer the user's message normally."
+                )
 
             request_id = self._next_request_id()
             self._debug_log(f"Request created: request_id={request_id}")
@@ -224,6 +262,11 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
+                    with self._state_lock:
+                        # Make the interrupted assistant text available to the next interrupted
+                        # utterance only (ephemeral context; not committed to memory).
+                        self._last_interrupted_assistant_text = item.text
+                        self._last_interrupted_at = monotonic()
                 else:
                     with self._state_lock:
                         if item.request_id == self._latest_request_id:
