@@ -56,7 +56,7 @@ class ConversationService:
                 )
             messages.extend(self.conversation_memory.recent(self.memory_window))
 
-        reply = cast(str, self.chat_client.complete_messages(messages=messages))
+        reply = self.chat_client.complete_messages(messages=messages)
         return reply
 
     def commit_assistant_reply(self, reply: str) -> None:
