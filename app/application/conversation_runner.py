@@ -5,6 +5,8 @@ from threading import BoundedSemaphore, Event, Lock, Thread
 from time import monotonic
 from typing import NamedTuple
 
+import numpy as np
+
 from app.interface.errors import ExternalServiceError
 
 from app.infrastructure.audio.listener import Listener
@@ -39,7 +41,7 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self.is_awake = False
-        self.utterance_queue: Queue = Queue(maxsize=3)
+        self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
         self.stop_listening_event = Event()
         self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
@@ -62,7 +64,7 @@ class ConversationRunner:
         self._start_listener_thread()
 
         while True:
-            audio = self.utterance_queue.get()
+            audio: np.ndarray = self.utterance_queue.get()
 
             interrupted = self._interrupt_pending_event.is_set()
             if interrupted:
@@ -81,18 +83,23 @@ class ConversationRunner:
                     self._last_interrupted_assistant_text = None
                     self._last_interrupted_at = 0.0
 
-
             # Limit concurrent OpenAI calls.
             self._inflight_semaphore.acquire()
-            Thread(
+            worker = Thread(
                 target=self._process_utterance,
                 args=(audio, interrupted, interrupted_assistant_text),
                 daemon=True,
-            ).start()
+            )
+            try:
+                worker.start()
+            except RuntimeError as e:
+                self._log(f"Error starting worker thread: {e}")
+                self._inflight_semaphore.release()
+                continue
 
     def _process_utterance(
         self,
-        audio,
+        audio: np.ndarray,
         interrupted: bool,
         interrupted_assistant_text: str | None,
     ) -> None:
