@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import Sequence, TypeAlias
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 from app.domain.vo.chat_message import ChatMessage
+from app.interface.errors import ChatClientError
 
 try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
 
     ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
-except Exception:
+except (ImportError, ModuleNotFoundError):
     ChatCompletionMessageParam: TypeAlias = dict[str, str]
 
 
@@ -30,10 +31,13 @@ class OpenAIChatClient:
         openai_messages: list[ChatCompletionMessageParam] = [
             {"role": message.role, "content": message.content} for message in messages
         ]
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=openai_messages,
-        )
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=openai_messages,
+            )
+        except OpenAIError as e:
+            raise ChatClientError(str(e)) from e
 
         choices = response.choices
         if not choices:

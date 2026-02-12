@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from queue import Empty, Full, Queue
-from threading import Event, Thread
+from threading import BoundedSemaphore, Event, Lock, Thread
 from typing import NamedTuple
 
-import sounddevice as sd
-from openai import OpenAIError
+from app.interface.errors import ExternalServiceError
 
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
@@ -44,7 +43,10 @@ class ConversationRunner:
         self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
         self.is_speaking_event = Event()
+        self._state_lock = Lock()
         self._request_id = 0
+        self._latest_request_id = 0
+        self._inflight_semaphore = BoundedSemaphore(value=2)
         self._listener_thread: Thread | None = None
 
     def run(self) -> None:
@@ -53,30 +55,49 @@ class ConversationRunner:
 
         while True:
             audio = self.utterance_queue.get()
+
+            # Limit concurrent OpenAI calls.
+            self._inflight_semaphore.acquire()
+            Thread(
+                target=self._process_utterance,
+                args=(audio,),
+                daemon=True,
+            ).start()
+
+    def _process_utterance(self, audio) -> None:
+        try:
             user_text = self.stt.transcribe(audio)
-
             if not user_text:
-                continue
+                return
 
-            # If the user spoke while Buddy was speaking, stop playback as soon as possible.
-            # (This is also triggered earlier by on_speech_start, but keep this as a fallback.)
+            # Fallback: if the user spoke while Buddy was speaking, stop playback as soon as possible.
             self.stop_speaking_event.set()
 
-            if not self.is_awake:
+            with self._state_lock:
+                is_awake = self.is_awake
+
+            if not is_awake:
                 if self._detect_wake_word(user_text):
-                    self.is_awake = True
+                    with self._state_lock:
+                        self.is_awake = True
                 else:
-                    continue
+                    return
 
             self._log(f"You: {user_text}")
 
+            request_id = self._next_request_id()
             reply = self.conversation_service.reply(user_text)
-
             if not reply or not reply.strip():
-                continue
+                return
 
             self._log(f"Buddy: {reply}")
-            self._publish_reply(reply)
+            self._publish_reply_if_latest(request_id=request_id, reply=reply)
+        except ExternalServiceError as e:
+            self._log(f"External service error: {e}")
+        except (OSError, RuntimeError, ValueError) as e:
+            self._log(f"Error processing utterance: {e}")
+        finally:
+            self._inflight_semaphore.release()
 
     def _start_listener_thread(self) -> None:
         if self._listener_thread and self._listener_thread.is_alive():
@@ -101,9 +122,18 @@ class ConversationRunner:
         normalized_text = text.lower()
         return any(wake_word in normalized_text for wake_word in self.WAKE_WORDS)
 
-    def _publish_reply(self, reply: str) -> None:
-        self._request_id += 1
-        item = _ReplyItem(request_id=self._request_id, text=reply)
+    def _next_request_id(self) -> int:
+        with self._state_lock:
+            self._request_id += 1
+            self._latest_request_id = self._request_id
+            return self._request_id
+
+    def _publish_reply_if_latest(self, *, request_id: int, reply: str) -> None:
+        with self._state_lock:
+            if request_id != self._latest_request_id:
+                return
+
+        item = _ReplyItem(request_id=request_id, text=reply)
 
         try:
             while True:
@@ -130,11 +160,20 @@ class ConversationRunner:
             if not item.text:
                 continue
 
+            with self._state_lock:
+                if item.request_id != self._latest_request_id:
+                    continue
+
             try:
                 self.stop_speaking_event.clear()
                 self.is_speaking_event.set()
 
                 reply_audio = self.tts.synthesize(item.text)
+
+                with self._state_lock:
+                    if item.request_id != self._latest_request_id:
+                        continue
+
                 completed = self.speaker.speak(
                     reply_audio,
                     stop_event=self.stop_speaking_event,
@@ -143,7 +182,7 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
-            except (OpenAIError, OSError, RuntimeError, ValueError, sd.PortAudioError) as e:
+            except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
                 continue

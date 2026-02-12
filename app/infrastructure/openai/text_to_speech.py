@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
+
+from app.interface.errors import TextToSpeechError
 
 
 class TextToSpeech:
@@ -17,14 +19,16 @@ class TextToSpeech:
         self.voice = voice
 
     def synthesize(self, text: str) -> np.ndarray:
-        response = self.client.audio.speech.create(
-            model=self.model,
-            voice=self.voice,
-            input=text,
-            response_format="pcm",
-        )
-
-        pcm_bytes = response.read()
+        try:
+            response = self.client.audio.speech.create(
+                model=self.model,
+                voice=self.voice,
+                input=text,
+                response_format="pcm",
+            )
+            pcm_bytes = response.read()
+        except OpenAIError as e:
+            raise TextToSpeechError(str(e)) from e
 
         audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
         audio_float = audio_int16.astype(np.float32) / 32767.0
