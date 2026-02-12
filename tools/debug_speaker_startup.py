@@ -2,8 +2,17 @@ from __future__ import annotations
 
 import argparse
 import time
+import sys
+from pathlib import Path
 
 import numpy as np
+
+# Allow running this file directly (e.g. `python tools\\debug_speaker_startup.py`).
+# When executed as a script, Python sets sys.path[0] to the script directory
+# (`tools/`), so the repo root isn't importable by default.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from app.infrastructure.audio.speaker import Speaker
 
