@@ -1,3 +1,5 @@
+🗾Japanese: [日本語版](README.ja.md)
+
 # My English Buddy
 
 My English Buddy is a desktop application for English conversation practice powered by OpenAI APIs.
