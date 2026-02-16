@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from openai import OpenAI, OpenAIError
 
-from app.interface.errors import TextToSpeechError
+from app.domain.gateway.errors import TextToSpeechError
 
 
 class TextToSpeech:
