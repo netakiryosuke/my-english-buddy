@@ -1,9 +1,3 @@
-from openai import (
-    APIConnectionError,
-    AuthenticationError,
-    OpenAIError,
-    RateLimitError,
-)
 from PySide6.QtCore import QThread, Signal
 
 from app.application.conversation_runner import ConversationRunner
@@ -21,13 +15,5 @@ class ConversationWorker(QThread):
     def run(self) -> None:
         try:
             self.runner.run()
-        except AuthenticationError as e:
-            self.log.emit(f"OpenAI auth error: {e}")
-        except RateLimitError as e:
-            self.log.emit(f"OpenAI rate limit error: {e}")
-        except APIConnectionError as e:
-            self.log.emit(f"OpenAI connection error: {e}")
-        except OpenAIError as e:
-            self.log.emit(f"OpenAI error: {e}")
         except Exception as e:
             self.log.emit(f"Unexpected error: {e}")
