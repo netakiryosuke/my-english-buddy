@@ -17,3 +17,7 @@ dependencies = [
 test = [
     "pytest>=8.0.0",
 ]
+
+local-stt = [
+    "faster-whisper>=1.2.1",
+]
