@@ -22,6 +22,9 @@ class SpeechToText:
         self.model_name = model
         self.language = language
 
+        preferred_device = device
+        preferred_compute_type = compute_type
+
         try:
             from faster_whisper import WhisperModel as _WhisperModel
         except ModuleNotFoundError as e:
@@ -33,11 +36,38 @@ class SpeechToText:
         try:
             self._model: WhisperModel = _WhisperModel(
                 self.model_name,
-                device=device,
-                compute_type=compute_type,
+                device=preferred_device,
+                compute_type=preferred_compute_type,
                 num_workers=2,
             )
         except Exception as e:
+            message = str(e)
+            likely_missing_cuda_libs = (
+                "cublas64_12.dll" in message
+                or "cudnn" in message.lower()
+                or "cublas" in message.lower()
+                or "cuda" in message.lower()
+            )
+
+            if likely_missing_cuda_libs and preferred_device == "cuda":
+                # Keep the config surface minimal: automatically fall back to CPU.
+                try:
+                    self._model = _WhisperModel(
+                        self.model_name,
+                        device="cpu",
+                        compute_type="int8",
+                        num_workers=1,
+                    )
+                    return
+                except Exception as cpu_e:
+                    raise SpeechToTextError(
+                        "Failed to initialize local STT model on GPU and CPU. "
+                        "GPU path requires CUDA 12 + cuDNN 9 (and cuBLAS) installed and discoverable. "
+                        "CPU fallback uses int8 and should work without CUDA. "
+                        "You can also switch back to OpenAI STT (MY_ENGLISH_BUDDY_STT_PROVIDER=openai). "
+                        f"GPU error: {e} | CPU error: {cpu_e}"
+                    ) from cpu_e
+
             raise SpeechToTextError(
                 "Failed to initialize local STT model. "
                 "If you want to use GPU, ensure CUDA 12 + cuDNN 9 are installed. "
