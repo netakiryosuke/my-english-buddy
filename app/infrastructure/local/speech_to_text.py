@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import platform
+import ctypes
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -25,12 +27,27 @@ class SpeechToText:
         preferred_device = device
         preferred_compute_type = compute_type
 
+        # If CUDA runtime libraries are not installed, initializing with device="cuda"
+        # may fail before we can gracefully fall back.
+        if platform.system() == "Windows" and preferred_device in {"cuda", "auto"}:
+            try:
+                ctypes.WinDLL("cublas64_12.dll")
+            except OSError:
+                preferred_device = "cpu"
+                preferred_compute_type = "int8"
+
         try:
             from faster_whisper import WhisperModel as _WhisperModel
         except ModuleNotFoundError as e:
             raise SpeechToTextError(
                 "Local STT provider requires 'faster-whisper'. "
                 "Install it with: uv sync --extra local-stt"
+            ) from e
+        except Exception as e:
+            raise SpeechToTextError(
+                "Failed to import local STT dependencies. "
+                "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure they are on PATH. "
+                f"Original error: {e}"
             ) from e
 
         try:
