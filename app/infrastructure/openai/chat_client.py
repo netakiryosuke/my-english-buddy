@@ -5,7 +5,7 @@ from typing import Sequence, TypeAlias
 from openai import OpenAI, OpenAIError
 
 from app.domain.vo.chat_message import ChatMessage
-from app.interface.errors import ChatClientError
+from app.domain.gateway.errors import ChatClientError
 
 try:
     from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam

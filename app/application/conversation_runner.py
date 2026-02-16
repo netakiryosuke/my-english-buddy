@@ -7,13 +7,13 @@ from typing import NamedTuple
 
 import numpy as np
 
-from app.interface.errors import ExternalServiceError
+from app.domain.gateway.errors import ExternalServiceError
 
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
 from app.application.conversation_service import ConversationService
-from app.interface.speech_to_text import SpeechToText
-from app.interface.text_to_speech import TextToSpeech
+from app.domain.gateway.speech_to_text import SpeechToText
+from app.domain.gateway.text_to_speech import TextToSpeech
 from app.utils.logger import Logger
 
 
