@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from queue import Empty, Full, Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
-from time import monotonic
+from time import monotonic, sleep
 from typing import NamedTuple
 
 import numpy as np
@@ -24,6 +24,8 @@ class _ReplyItem(NamedTuple):
 
 class ConversationRunner:
     WAKE_WORDS = ["buddy"]
+    SLEEP_TIMEOUT_SECONDS = 180.0
+    SLEEP_POLL_INTERVAL_SECONDS = 0.5
 
     def __init__(
         self,
@@ -53,6 +55,10 @@ class ConversationRunner:
         self._inflight_semaphore = BoundedSemaphore(value=2)
         self._listener_thread: Thread | None = None
 
+        self._sleep_watchdog_thread: Thread | None = None
+        self._last_activity_at: float = monotonic()
+        self._inflight_workers = 0
+
         # Used to provide context to the next interrupted user utterance without
         # committing it to memory.
         self._last_interrupted_assistant_text: str | None = None
@@ -62,6 +68,7 @@ class ConversationRunner:
     def run(self) -> None:
         self._start_speaker_thread()
         self._start_listener_thread()
+        self._start_sleep_watchdog_thread()
 
         self._log("Ready. Say 'Buddy' to start.")
 
@@ -108,6 +115,8 @@ class ConversationRunner:
         interrupted: bool,
         interrupted_assistant_text: str | None,
     ) -> None:
+        with self._state_lock:
+            self._inflight_workers += 1
         try:
             user_text = self.stt.transcribe(audio)
             if not user_text:
@@ -123,6 +132,7 @@ class ConversationRunner:
                 if self._detect_wake_word(user_text):
                     with self._state_lock:
                         self.is_awake = True
+                        self._last_activity_at = monotonic()
                 else:
                     return
 
@@ -164,6 +174,8 @@ class ConversationRunner:
         except (OSError, RuntimeError, ValueError) as e:
             self._log(f"Error processing utterance: {e}")
         finally:
+            with self._state_lock:
+                self._inflight_workers -= 1
             self._inflight_semaphore.release()
 
     def _start_listener_thread(self) -> None:
@@ -223,6 +235,44 @@ class ConversationRunner:
         )
         thread.start()
 
+    def _start_sleep_watchdog_thread(self) -> None:
+        if self._sleep_watchdog_thread and self._sleep_watchdog_thread.is_alive():
+            return
+
+        self._sleep_watchdog_thread = Thread(
+            target=self._sleep_watchdog_loop,
+            daemon=True,
+        )
+        self._sleep_watchdog_thread.start()
+
+    def _sleep_watchdog_loop(self) -> None:
+        while True:
+            sleep(self.SLEEP_POLL_INTERVAL_SECONDS)
+
+            if not self._should_sleep(now=monotonic()):
+                continue
+
+            with self._state_lock:
+                # Re-check under lock to avoid races.
+                if not self._should_sleep(now=monotonic()):
+                    continue
+                self.is_awake = False
+
+            self._log("Sleeping (idle timeout). Say 'Buddy' to start.")
+
+    def _should_sleep(self, *, now: float) -> bool:
+        with self._state_lock:
+            if not self.is_awake:
+                return False
+
+            if self.is_speaking_event.is_set():
+                return False
+
+            if self._inflight_workers > 0:
+                return False
+
+            return (now - self._last_activity_at) >= self.SLEEP_TIMEOUT_SECONDS
+
     def _speaker_loop(self) -> None:
         while True:
             item = self.reply_queue.get()
@@ -262,6 +312,8 @@ class ConversationRunner:
                     # Do not gate on `_latest_request_id` here: it can change while speaking,
                     # which would otherwise create a "heard but not remembered" inconsistency.
                     self.conversation_service.commit_assistant_reply(item.text)
+                    with self._state_lock:
+                        self._last_activity_at = monotonic()
             except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
                 self._log(f"Error in speaker loop: {e}")
                 self.stop_speaking_event.set()
