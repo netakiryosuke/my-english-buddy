@@ -63,6 +63,8 @@ class ConversationRunner:
         self._start_speaker_thread()
         self._start_listener_thread()
 
+        self._log("Ready. Say 'Buddy' to start.")
+
         while True:
             audio: np.ndarray = self.utterance_queue.get()
 
