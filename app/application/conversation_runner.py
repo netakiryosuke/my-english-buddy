@@ -254,24 +254,29 @@ class ConversationRunner:
 
             with self._state_lock:
                 # Re-check under lock to avoid races.
-                if not self._should_sleep(now=monotonic()):
+                if not self._should_sleep_unsafe(now=monotonic()):
                     continue
                 self.is_awake = False
 
             self._log("Sleeping (idle timeout). Say 'Buddy' to start.")
 
     def _should_sleep(self, *, now: float) -> bool:
+        # Public, lock-taking wrapper.
         with self._state_lock:
-            if not self.is_awake:
-                return False
+            return self._should_sleep_unsafe(now=now)
 
-            if self.is_speaking_event.is_set():
-                return False
+    def _should_sleep_unsafe(self, *, now: float) -> bool:
+        # Internal helper that assumes _state_lock is already held.
+        if not self.is_awake:
+            return False
 
-            if self._inflight_workers > 0:
-                return False
+        # Do not sleep while speaking or while there are inflight workers.
+        if self.is_speaking_event.is_set():
+            return False
+        if self._inflight_workers > 0:
+            return False
 
-            return (now - self._last_activity_at) >= self.SLEEP_TIMEOUT_SECONDS
+        return (now - self._last_activity_at) >= self.SLEEP_TIMEOUT_SECONDS
 
     def _speaker_loop(self) -> None:
         while True:
