@@ -35,7 +35,7 @@ class SpeechToText:
         except Exception as e:
             raise SpeechToTextError(
                 "Failed to import local STT dependencies. "
-                "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure they are on PATH. "
+                "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure your system can find their libraries (for example via the OS's standard library search path). "
                 f"Original error: {e}"
             ) from e
 
