@@ -59,7 +59,17 @@ def build_container(
             client=openai_client,
             model=config.openai.model,
         )
-        stt = stt or OpenAISpeechToText(client=openai_client)
+
+        if stt is None:
+            if config.stt.provider == "local":
+                from app.infrastructure.local.speech_to_text import (
+                    SpeechToText as LocalSpeechToText,
+                )
+
+                stt = LocalSpeechToText(model=config.stt.local_model)
+            else:
+                stt = OpenAISpeechToText(client=openai_client)
+
         tts = tts or OpenAITextToSpeech(client=openai_client)
 
     conversation_service = ConversationService(
