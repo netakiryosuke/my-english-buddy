@@ -66,7 +66,7 @@ def build_container(
                     SpeechToText as LocalSpeechToText,
                 )
 
-                stt = LocalSpeechToText(model=config.stt.local_model)
+                stt = LocalSpeechToText(model=config.stt.local_model, logger=logger)
             else:
                 stt = OpenAISpeechToText(client=openai_client)
 
