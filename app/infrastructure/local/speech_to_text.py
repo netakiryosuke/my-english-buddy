@@ -83,9 +83,24 @@ class SpeechToText:
 
     def transcribe(self, audio: np.ndarray) -> str:
         try:
-            audio_1d = np.asarray(audio, dtype=np.float32).squeeze()
-            if audio_1d.ndim != 1:
-                raise ValueError(f"Expected 1D audio after squeeze. Got shape={audio_1d.shape!r}")
+            audio_arr = np.asarray(audio, dtype=np.float32)
+
+            if audio_arr.ndim == 1:
+                audio_1d = audio_arr
+            elif audio_arr.ndim == 2:
+                # Allow multi-channel audio by downmixing to mono.
+                # Listener can be configured with multiple channels, e.g. (samples, channels).
+                # Some audio stacks may produce (channels, samples), so handle both.
+                if audio_arr.shape[0] >= audio_arr.shape[1]:
+                    # (samples, channels)
+                    audio_1d = audio_arr.mean(axis=1)
+                else:
+                    # (channels, samples)
+                    audio_1d = audio_arr.mean(axis=0)
+            else:
+                raise ValueError(
+                    f"Expected 1D mono audio or 2D multi-channel audio. Got shape={audio_arr.shape!r}"
+                )
 
             # Listener produces float32 PCM in [-1, 1] at 16kHz.
             audio_1d = np.clip(audio_1d, -1.0, 1.0)
