@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from queue import Empty, Full, Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
 from time import monotonic, sleep
@@ -64,6 +65,15 @@ class ConversationRunner:
         self._last_interrupted_assistant_text: str | None = None
         self._last_interrupted_at: float = 0.0
         self._interrupted_context_ttl_seconds: float = 8.0
+
+        # Optional hooks for UI/observers.
+        self.on_calibration_start: Callable[[], None] | None = None
+        self.on_calibration_end: Callable[[float], None] | None = None
+        self.on_calibration_error: Callable[[Exception], None] | None = None
+
+    def request_noise_recalibration(self) -> None:
+        self.listener.request_recalibration()
+        self._log("Noise calibration requested.")
 
     def run(self) -> None:
         self._start_speaker_thread()
@@ -186,7 +196,25 @@ class ConversationRunner:
             utterance_queue=self.utterance_queue,
             stop_event=self.stop_listening_event,
             on_speech_start=self._on_user_speech_start,
+            on_calibration_start=self._on_calibration_start,
+            on_calibration_end=self._on_calibration_end,
+            on_calibration_error=self._on_calibration_error,
         )
+
+    def _on_calibration_start(self) -> None:
+        self._log("Calibrating noise level...")
+        if self.on_calibration_start:
+            self.on_calibration_start()
+
+    def _on_calibration_end(self, threshold: float) -> None:
+        self._log(f"Noise calibration complete. threshold={threshold:.6f}")
+        if self.on_calibration_end:
+            self.on_calibration_end(threshold)
+
+    def _on_calibration_error(self, error: Exception) -> None:
+        self._log(f"Noise calibration failed: {error}")
+        if self.on_calibration_error:
+            self.on_calibration_error(error)
 
     def _on_user_speech_start(self) -> None:
         # Called from Listener's background listening loop when speech starts;
