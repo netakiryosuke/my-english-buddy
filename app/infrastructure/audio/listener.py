@@ -131,11 +131,18 @@ class Listener:
             channels=self.channels,
             dtype="float32",
         ) as stream:
-            threshold = self._calibrate(
-                stream,
-                on_calibration_start=on_calibration_start,
-                on_calibration_end=on_calibration_end,
-            )
+            try:
+                threshold = self._calibrate(
+                    stream,
+                    on_calibration_start=on_calibration_start,
+                    on_calibration_end=on_calibration_end,
+                )
+            except Exception as e:
+                if on_calibration_error:
+                    with suppress(Exception):
+                        on_calibration_error(e)
+                stop_event.set()
+                return
 
             while not stop_event.is_set():
                 # Perform (re)calibration only when idle to avoid disrupting an utterance.
