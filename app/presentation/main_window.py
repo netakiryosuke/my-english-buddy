@@ -10,6 +10,7 @@ class MainWindow(QMainWindow):
         self.worker = worker
 
         self.setWindowTitle("My English Buddy")
+        self.resize(600, 400)
 
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
