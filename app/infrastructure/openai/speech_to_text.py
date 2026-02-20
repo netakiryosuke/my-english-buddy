@@ -6,7 +6,7 @@ import numpy as np
 from openai import OpenAI, OpenAIError
 from scipy.io.wavfile import write
 
-from app.domain.gateway.errors import SpeechToTextError
+from app.application.errors import SpeechToTextError
 
 
 class SpeechToText:

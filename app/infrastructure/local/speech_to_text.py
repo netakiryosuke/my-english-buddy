@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from app.domain.gateway.errors import SpeechToTextError
+from app.application.errors import SpeechToTextError
 from app.utils.logger import Logger
 
 if TYPE_CHECKING:
