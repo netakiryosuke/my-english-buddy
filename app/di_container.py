@@ -12,9 +12,9 @@ from app.config import AppConfig
 from app.infrastructure.openai.chat_client import OpenAIChatClient
 from app.infrastructure.openai.speech_to_text import SpeechToText as OpenAISpeechToText
 from app.infrastructure.openai.text_to_speech import TextToSpeech as OpenAITextToSpeech
-from app.domain.gateway.chat_client import ChatClient
-from app.domain.gateway.speech_to_text import SpeechToText
-from app.domain.gateway.text_to_speech import TextToSpeech
+from app.application.port.chat_client import ChatClient
+from app.application.port.speech_to_text import SpeechToText
+from app.application.port.text_to_speech import TextToSpeech
 from app.utils.logger import Logger
 
 

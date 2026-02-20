@@ -13,6 +13,3 @@ class ChatClient(Protocol):
     def complete_messages(self, *, messages: Sequence[ChatMessage]) -> str:
         """Return a completion given chat history messages."""
         ...
-
-
-__all__ = ["ChatClient", "ChatMessage", "ChatRole"]
