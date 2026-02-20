@@ -4,10 +4,8 @@ from typing import Protocol
 
 import numpy as np
 
-AudioArray = np.ndarray
-
 
 class SpeechToText(Protocol):
-    def transcribe(self, audio: AudioArray) -> str:
+    def transcribe(self, audio: np.ndarray) -> str:
         """Transcribe raw audio (float32 PCM ndarray) into text."""
         ...
