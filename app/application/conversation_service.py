@@ -6,7 +6,7 @@ from typing import cast
 
 from app.domain.entity.conversation_memory import ConversationMemory
 from app.domain.vo.chat_message import ChatMessage
-from app.domain.gateway.chat_client import ChatClient
+from app.application.port.chat_client import ChatClient
 
 
 @dataclass
