@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 
 from app.application.errors import SpeechToTextError
 from app.utils.logger import Logger
 
-if TYPE_CHECKING:
+try:
     from faster_whisper import WhisperModel
+except ModuleNotFoundError as e:
+    raise SpeechToTextError(
+        "Local STT provider requires 'faster-whisper'. "
+        "Install it with: uv sync --extra local-stt"
+    ) from e
+except Exception as e:
+    raise SpeechToTextError(
+        "Failed to import local STT dependencies. "
+        "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure your system can find their libraries (for example via the OS's standard library search path). "
+        f"Original error: {e}"
+    ) from e
 
 
 class SpeechToText:
@@ -37,21 +46,7 @@ class SpeechToText:
         preferred_compute_type = compute_type
 
         try:
-            from faster_whisper import WhisperModel as _WhisperModel
-        except ModuleNotFoundError as e:
-            raise SpeechToTextError(
-                "Local STT provider requires 'faster-whisper'. "
-                "Install it with: uv sync --extra local-stt"
-            ) from e
-        except Exception as e:
-            raise SpeechToTextError(
-                "Failed to import local STT dependencies. "
-                "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure your system can find their libraries (for example via the OS's standard library search path). "
-                f"Original error: {e}"
-            ) from e
-
-        try:
-            self._model: WhisperModel = _WhisperModel(
+            self._model = WhisperModel(
                 self.model_name,
                 device=preferred_device,
                 compute_type=preferred_compute_type,
@@ -75,7 +70,7 @@ class SpeechToText:
                     f"Original error: {e}"
                 )
                 try:
-                    self._model = _WhisperModel(
+                    self._model = WhisperModel(
                         self.model_name,
                         device="cpu",
                         compute_type="int8",
