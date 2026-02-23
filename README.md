@@ -13,7 +13,9 @@ This project is still **work in progress**. The README is intentionally practica
 - **Interface**: GUI application (PySide6) with conversation log display
 - **Input**: continuous microphone listening with automatic speech detection
 - **Wake Word**: say "buddy" to activate the conversation (once per session)
-- **Transcription**: OpenAI audio transcription API (hard-coded to `gpt-4o-mini-transcribe`)
+- **Transcription**: configurable Speech-to-Text provider
+  - **OpenAI** (default): uses OpenAI audio transcription API (`gpt-4o-mini-transcribe`)
+  - **Local**: uses faster-whisper for offline transcription (requires additional setup)
 - **Reply**: OpenAI Chat Completions API using `OPENAI_MODEL`
 - **Speech Output**: OpenAI Text-to-Speech API (hard-coded to `gpt-4o-mini-tts` with `alloy` voice)
 - **Memory**: in-memory conversation history (up to 50 messages) persists during the session
@@ -24,14 +26,20 @@ Current limitations (expected at this stage):
 - Memory is not saved between sessions (cleared on restart)
 - Conversation history is exported to `logs/` directory as text files, but cannot be re-imported
 - TTS model and voice are not configurable via environment variables
+- Local STT requires CUDA 12 + cuDNN for GPU acceleration (CPU-only mode is available but slower)
 
 ## Requirements
 
 - **Python**: 3.12 (see `.python-version`)
 - **OpenAI API key**: with access to the models used (transcription, chat, TTS)
+  - Not required if using local STT provider (only chat and TTS need OpenAI)
 - **Microphone access** and a working audio stack
 - **Audio output** (speakers or headphones)
 - **uv** (recommended): the repo includes `uv.lock`
+
+Optional (for local STT):
+- **CUDA 12 + cuDNN**: for GPU-accelerated local transcription (recommended)
+- **faster-whisper**: installed via `uv sync --extra local-stt`
 
 ## Setup
 
@@ -43,10 +51,14 @@ cp .env.example .env
 
 2) Edit `.env` and set at least `OPENAI_API_KEY` and `OPENAI_MODEL`.
 
-3) Install dependencies (recommended):
+3) Install dependencies:
 
 ```bash
+# Basic installation (OpenAI STT)
 uv sync
+
+# OR: Install with local STT support (optional)
+uv sync --extra local-stt
 ```
 
 4) Run the application:
@@ -97,11 +109,13 @@ You can configure the app via environment variables (typically in `.env`).
 
 | Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | Yes | - | OpenAI API key used by the OpenAI SDK. |
+| `OPENAI_API_KEY` | Yes* | - | OpenAI API key used by the OpenAI SDK. *Required unless using only local STT (chat and TTS still need it). |
 | `OPENAI_MODEL` | Yes | - | Chat model for replies (example: `gpt-4o-mini`). |
 | `OPENAI_BASE_URL` | No | - | Override API base URL (useful for proxies/compatible endpoints). |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` | No | - | Inline system prompt text. If set, it takes priority over the prompt file. |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` | No | `prompt.txt` | Path to a text file containing the system prompt. Used only if the file exists and is non-empty. |
+| `MY_ENGLISH_BUDDY_STT_PROVIDER` | No | `openai` | Speech-to-Text provider: `openai` (default) or `local` (faster-whisper). |
+| `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` | No | `distil-large-v3` | Model name for local STT (e.g., `distil-large-v3`, `large-v3`, `medium`). Only used when `MY_ENGLISH_BUDDY_STT_PROVIDER=local`. |
 
 System prompt resolution order:
 
@@ -131,6 +145,44 @@ export MY_ENGLISH_BUDDY_SYSTEM_PROMPT="You are a friendly English tutor. Keep re
 uv run python -m app.main
 ```
 
+### Speech-to-Text Provider
+
+You can choose between OpenAI's cloud-based transcription or local offline transcription:
+
+**OpenAI STT (default)**:
+- Uses `gpt-4o-mini-transcribe` model
+- Requires internet connection and OpenAI API key
+- Fast and accurate
+- Set `MY_ENGLISH_BUDDY_STT_PROVIDER=openai` (or leave unset)
+
+**Local STT**:
+- Uses faster-whisper for offline transcription
+- No internet required for transcription (chat and TTS still need OpenAI)
+- Requires `uv sync --extra local-stt` to install dependencies
+- GPU acceleration recommended (CUDA 12 + cuDNN)
+- Set `MY_ENGLISH_BUDDY_STT_PROVIDER=local`
+- Configure model with `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` (default: `distil-large-v3`)
+
+Example setup for local STT:
+
+```bash
+# Install dependencies with local STT support
+uv sync --extra local-stt
+
+# Configure .env
+echo "MY_ENGLISH_BUDDY_STT_PROVIDER=local" >> .env
+echo "MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3" >> .env
+
+# Run the app
+uv run python -m app.main
+```
+
+Available local models (from Hugging Face, downloaded on first use):
+- `distil-large-v3` (default, balanced speed/accuracy)
+- `large-v3` (highest accuracy, slower)
+- `medium` (faster, lower accuracy)
+- See [faster-whisper documentation](https://github.com/SYSTRAN/faster-whisper) for more options
+
 ## Development
 
 ### Running Tests
@@ -138,7 +190,10 @@ uv run python -m app.main
 The project includes unit tests for core application logic. To run tests:
 
 ```bash
-uv sync  # Install test dependencies
+# Install test dependencies
+uv sync --extra test
+
+# Run tests
 uv run pytest
 ```
 
@@ -162,10 +217,18 @@ Note: Test coverage is currently limited to core application logic. Infrastructu
 
 - Verify `OPENAI_API_KEY` is set correctly in `.env`
 - Check that your API key has access to the required models:
-  - `gpt-4o-mini-transcribe` (Speech-to-Text)
+  - `gpt-4o-mini-transcribe` (Speech-to-Text, only if using OpenAI STT)
   - Your chosen `OPENAI_MODEL` (Chat Completions)
   - `gpt-4o-mini-tts` (Text-to-Speech)
 - Verify network connectivity to OpenAI services
+- If using local STT, only chat and TTS models need OpenAI access
+
+### Local STT Issues
+
+- **Installation errors**: Ensure you ran `uv sync --extra local-stt`
+- **GPU not detected**: Install CUDA 12 + cuDNN, or the app will fall back to CPU (slower)
+- **Model download fails**: Check internet connection (models are downloaded from Hugging Face on first use)
+- **Slow transcription**: GPU acceleration is recommended; CPU-only mode is significantly slower
 
 ### Wake Word Not Working
 
