@@ -1,6 +1,7 @@
 """Unit tests for text utilities."""
 from __future__ import annotations
 
+import pytest
 import tempfile
 from pathlib import Path
 
@@ -59,6 +60,5 @@ class TestReadTextFile:
 
     def test_read_nonexistent_file_raises_error(self):
         """Test that reading a non-existent file raises FileNotFoundError."""
-        import pytest
         with pytest.raises(FileNotFoundError):
             read_text_file("/nonexistent/path/file.txt")

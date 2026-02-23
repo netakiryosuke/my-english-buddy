@@ -55,29 +55,33 @@ pytest -k "openai"
 
 Current test coverage includes:
 
-### Domain Layer (18 tests)
+### Domain Layer (7 tests - NEW)
 - **ChatMessage** (7 tests): Value object immutability, equality, and edge cases
+
+### Domain Layer (11 tests - EXISTING)
 - **ConversationMemory** (11 tests): Message storage, retrieval, memory limits
 
-### Application Layer (19 tests)
-- **ConversationService** (11 tests): Reply logic, system prompts, memory window
+### Application Layer (8 tests - NEW)
 - **Errors** (8 tests): Custom exception classes and inheritance
 
-### Infrastructure Layer (20 tests)
+### Application Layer (11 tests - EXISTING)
+- **ConversationService** (11 tests): Reply logic, system prompts, memory window
+
+### Infrastructure Layer (20 tests - NEW)
 - **OpenAI ChatClient** (6 tests): Message completion, error handling
 - **OpenAI SpeechToText** (7 tests): Audio transcription, silence detection
 - **OpenAI TextToSpeech** (7 tests): Speech synthesis, audio normalization
 
-### Utils (22 tests)
+### Utils (22 tests - NEW)
 - **Text utilities** (5 tests): File reading, whitespace handling
 - **Logger** (9 tests): Logging, callbacks, file output
 - **Args** (4 tests): Argument parsing
 - **Env** (4 tests): Environment variable loading
 
-### Configuration (17 tests)
+### Configuration (17 tests - NEW)
 - **AppConfig** (17 tests): Configuration creation, environment parsing, validation
 
-**Total: 95 tests**
+**Total: 95 tests (74 new + 21 existing)**
 
 ## Testing Principles
 
