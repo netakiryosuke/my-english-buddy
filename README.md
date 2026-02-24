@@ -4,104 +4,46 @@
 
 My English Buddy is a desktop application for English conversation practice powered by OpenAI APIs.
 
-It continuously listens to your microphone, transcribes your speech with OpenAI Speech-to-Text, generates conversational replies using OpenAI Chat Completions, and speaks them back using OpenAI Text-to-Speech. The app features a simple GUI window that displays the conversation log.
+It continuously listens to your microphone, transcribes your speech, generates replies, and speaks them back. A simple GUI window shows the conversation log.
 
-This project is still **work in progress**. The README is intentionally practical rather than exhaustive.
+## Quickstart
 
-## Overview
+### Windows (PowerShell)
 
-- **Interface**: GUI application (PySide6) with conversation log display
-- **Input**: continuous microphone listening with automatic speech detection
-- **Wake Word**: say "buddy" to activate the conversation (once per session)
-- **Transcription**: configurable Speech-to-Text provider
-  - **OpenAI** (default): uses OpenAI audio transcription API (`gpt-4o-mini-transcribe`)
-  - **Local**: uses faster-whisper for offline transcription (requires additional setup)
-- **Reply**: OpenAI Chat Completions API using `OPENAI_MODEL`
-- **Speech Output**: OpenAI Text-to-Speech API (hard-coded to `gpt-4o-mini-tts` with `alloy` voice)
-- **Memory**: in-memory conversation history (up to 50 messages) persists during the session
-- **Interruption**: you can interrupt the assistant's speech by speaking, and it will stop immediately
+```powershell
+Copy-Item .env.example .env
+# Edit .env and set OPENAI_API_KEY and OPENAI_MODEL
 
-Current limitations (expected at this stage):
-
-- Memory is not saved between sessions (cleared on restart)
-- Conversation history is exported to `logs/` directory as text files, but cannot be re-imported
-- TTS model and voice are not configurable via environment variables
-- Local STT requires CUDA 12 + cuDNN for GPU acceleration (CPU-only mode is available but slower)
-
-## Requirements
-
-- **Python**: 3.12 (see `.python-version`)
-- **OpenAI API key**: with access to the models used (transcription, chat, TTS)
-  - Not required if using local STT provider (only chat and TTS need OpenAI)
-- **Microphone access** and a working audio stack
-- **Audio output** (speakers or headphones)
-- **uv** (recommended): the repo includes `uv.lock`
-
-Optional (for local STT):
-- **CUDA 12 + cuDNN**: for GPU-accelerated local transcription (recommended)
-- **faster-whisper**: installed via `uv sync --extra local-stt`
-
-## Setup
-
-1) Create your environment file:
-
-```bash
-cp .env.example .env
-```
-
-2) Edit `.env` and set at least `OPENAI_API_KEY` and `OPENAI_MODEL`.
-
-3) Install dependencies:
-
-```bash
-# Basic installation (OpenAI STT)
 uv sync
+Copy-Item prompt.txt.example prompt.txt  # optional (custom system prompt; gitignored)
 
-# OR: Install with local STT support (optional)
-uv sync --extra local-stt
-```
-
-4) Run the application:
-
-```bash
 uv run python -m app.main
 ```
 
-The GUI window will open and start listening. Say "buddy" to wake it up, then speak naturally in English. The assistant will reply with voice.
-
-Optional: customize the system prompt (recommended):
+### macOS/Linux/WSL
 
 ```bash
-cp prompt.txt.example prompt.txt
-# Edit prompt.txt to customize the assistant's behavior
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY and OPENAI_MODEL
+
+uv sync
+cp prompt.txt.example prompt.txt  # optional (custom system prompt; gitignored)
+
+uv run python -m app.main
 ```
 
-If you want to load a different dotenv file:
+Say “buddy” to wake it up, then speak in English.
 
-```bash
-uv run python -m app.main --env-file path/to/.env
-```
+Optional:
+- Use a different dotenv file: `uv run python -m app.main --env-file path/to/.env`
+- Disable dotenv loading: `uv run python -m app.main --env-file ""`
 
-To disable dotenv loading entirely, pass an empty value:
+## Behavior
 
-```bash
-uv run python -m app.main --env-file ""
-```
-
-## How It Works
-
-1. **Listening**: The app continuously listens to your microphone in the background
-2. **Wake Word**: Say "buddy" to activate the conversation (required only once per session)
-3. **Speech Input**: After waking up, speak naturally; the app detects when you stop speaking
-4. **Transcription**: Your speech is transcribed to text using OpenAI Speech-to-Text API
-5. **Chat**: The transcribed text is sent to OpenAI Chat Completions API with conversation history
-6. **Speech Output**: The assistant's reply is synthesized to speech using OpenAI Text-to-Speech API
-7. **Playback**: The speech is played through your speakers/headphones
-8. **Interruption**: You can interrupt the assistant by speaking while it's talking
-
-**Memory Management:**
-
-The conversation memory stores up to 50 messages total during the session. When generating replies, it uses the most recent 20 messages as context to keep the conversation focused. Memory is cleared when the app restarts.
+- **Wake word**: say “buddy” to start. After ~3 minutes of inactivity, it goes back to sleep and you’ll need to say “buddy” again.
+- **Interruption**: speaking while the assistant talks stops playback immediately.
+- **Memory**: in-memory only (up to 50 messages; uses the latest 20 as context). Not saved between app restarts.
+- **Logs**: saved on app exit to `logs/YYYY-MM-DD_HH-MM-SS.txt`.
 
 ## Environment Variables
 
@@ -109,7 +51,7 @@ You can configure the app via environment variables (typically in `.env`).
 
 | Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | Yes* | - | OpenAI API key used by the OpenAI SDK. *Required unless using only local STT (chat and TTS still need it). |
+| `OPENAI_API_KEY` | Yes | - | OpenAI API key used by the OpenAI SDK. (Currently required even when using local STT.) |
 | `OPENAI_MODEL` | Yes | - | Chat model for replies (example: `gpt-4o-mini`). |
 | `OPENAI_BASE_URL` | No | - | Override API base URL (useful for proxies/compatible endpoints). |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` | No | - | Inline system prompt text. If set, it takes priority over the prompt file. |
@@ -123,65 +65,19 @@ System prompt resolution order:
 2) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: `prompt.txt`) if file exists and is non-empty
 3) Built-in default prompt in the application
 
-## Configuration
+## Optional: Local Speech-to-Text
 
-### System Prompt
-
-The system prompt defines the assistant's personality and behavior. You can customize it in three ways (in priority order):
-
-1. **Environment variable**: Set `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` directly
-2. **Prompt file**: Create/edit the file specified in `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: `prompt.txt`)
-3. **Built-in default**: If neither is provided, the app uses a built-in English tutor prompt
+You can switch from OpenAI STT to local offline transcription (faster-whisper):
 
 Example:
 
 ```bash
-# Using a custom prompt file
-cp prompt.txt.example prompt.txt
-# Edit prompt.txt with your preferred instructions
-
-# or use an environment variable
-export MY_ENGLISH_BUDDY_SYSTEM_PROMPT="You are a friendly English tutor. Keep replies short."
-uv run python -m app.main
-```
-
-### Speech-to-Text Provider
-
-You can choose between OpenAI's cloud-based transcription or local offline transcription:
-
-**OpenAI STT (default)**:
-- Uses `gpt-4o-mini-transcribe` model
-- Requires internet connection and OpenAI API key
-- Fast and accurate
-- Set `MY_ENGLISH_BUDDY_STT_PROVIDER=openai` (or leave unset)
-
-**Local STT**:
-- Uses faster-whisper for offline transcription
-- No internet required for transcription (chat and TTS still need OpenAI)
-- Requires `uv sync --extra local-stt` to install dependencies
-- GPU acceleration recommended (CUDA 12 + cuDNN)
-- Set `MY_ENGLISH_BUDDY_STT_PROVIDER=local`
-- Configure model with `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` (default: `distil-large-v3`)
-
-Example setup for local STT:
-
-```bash
-# Install dependencies with local STT support
 uv sync --extra local-stt
-
-# Configure .env
-echo "MY_ENGLISH_BUDDY_STT_PROVIDER=local" >> .env
-echo "MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3" >> .env
-
-# Run the app
-uv run python -m app.main
 ```
 
-Available local models (from Hugging Face, downloaded on first use):
-- `distil-large-v3` (default, balanced speed/accuracy)
-- `large-v3` (highest accuracy, slower)
-- `medium` (faster, lower accuracy)
-- See [faster-whisper documentation](https://github.com/SYSTRAN/faster-whisper) for more options
+Notes:
+- GPU acceleration is optional; the app falls back to CPU if CUDA libraries are missing.
+- `OPENAI_API_KEY` is still required for chat and TTS.
 
 ## Development
 
@@ -234,4 +130,4 @@ Note: Test coverage is currently limited to core application logic. Infrastructu
 
 - Ensure you say "buddy" clearly at the beginning
 - Check the GUI log window to see if your speech is being transcribed
-- The wake word only needs to be said once per session
+- If the app went to sleep due to inactivity, say "buddy" again
