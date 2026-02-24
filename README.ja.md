@@ -13,7 +13,7 @@ Copy-Item .env.example .env
 # .env を編集して OPENAI_API_KEY と OPENAI_MODEL を設定
 
 uv sync
-Copy-Item prompt.txt.example prompt.txt  # 任意（システムプロンプトをカスタマイズする場合。git管理されません）
+Copy-Item prompt.txt.example prompt.txt  # 任意（システムプロンプトをカスタマイズする場合）
 
 uv run python -m app.main
 ```
@@ -25,7 +25,7 @@ cp .env.example .env
 # .env を編集して OPENAI_API_KEY と OPENAI_MODEL を設定
 
 uv sync
-cp prompt.txt.example prompt.txt  # 任意（システムプロンプトをカスタマイズする場合。git管理されません）
+cp prompt.txt.example prompt.txt  # 任意（システムプロンプトをカスタマイズする場合）
 
 uv run python -m app.main
 ```
@@ -49,7 +49,7 @@ uv run python -m app.main
 
 | 名前 | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | Yes | - | OpenAI SDK で使用される API キー（現状、ローカル STT の場合でも必須です）|
+| `OPENAI_API_KEY` | Yes | - | OpenAI SDK で使用される API キー |
 | `OPENAI_MODEL` | Yes | - | 応答に使用するチャットモデル（例: `gpt-4o-mini`） |
 | `OPENAI_BASE_URL` | No | - | API ベース URL を上書き（プロキシ/互換エンドポイント用） |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` | No | - | インラインのシステムプロンプトテキスト。設定されている場合、プロンプトファイルより優先されます |
@@ -81,7 +81,7 @@ uv sync --extra local-stt
 
 ### テストの実行
 
-プロジェクトには、コアアプリケーションロジック用のユニットテストが含まれています。テストを実行するには:
+プロジェクトにはユニットテストが含まれています。テストを実行するには:
 
 ```bash
 # テスト依存関係をインストール
@@ -91,41 +91,11 @@ uv sync --extra test
 uv run pytest
 ```
 
-注意: テストカバレッジは現在、コアアプリケーションロジックに限定されています。インフラストラクチャと GUI レイヤーのテストは今後の開発で予定されています。
-
 ## トラブルシューティング
 
-### マイクが動作しない
-
-- **macOS/Linux**: ターミナルまたは Python にマイクの権限があることを、システム環境設定/設定で確認してください
-- **すべてのプラットフォーム**: マイクが正しく接続され、デフォルトの入力デバイスとして設定されているか確認してください
-- このアプリ以外で、簡単なオーディオテストを実行してマイクが動作するか確認してください
-
-### 音声が出力されない
-
-- スピーカー/ヘッドフォンが接続され、動作していることを確認してください
-- システムの音量設定を確認してください
-- OpenAI TTS API にアクセスできることを確認してください（API キーとネットワーク接続を確認）
-
-### OpenAI API エラー
-
-- `.env` で `OPENAI_API_KEY` が正しく設定されていることを確認してください
-- API キーが必要なモデルへのアクセス権を持っていることを確認してください:
-  - `gpt-4o-mini-transcribe`（Speech-to-Text、OpenAI STT を使用する場合のみ）
-  - 選択した `OPENAI_MODEL`（Chat Completions）
-  - `gpt-4o-mini-tts`（Text-to-Speech）
-- OpenAI サービスへのネットワーク接続を確認してください
-- ローカル STT を使用する場合、チャットと TTS モデルのみ OpenAI アクセスが必要です
-
-### ローカル STT の問題
-
-- **インストールエラー**: `uv sync --extra local-stt` を実行したことを確認してください
-- **GPU が検出されない**: CUDA 12 + cuDNN をインストールするか、アプリは CPU にフォールバックします（遅くなります）
-- **モデルのダウンロードに失敗**: インターネット接続を確認してください（初回使用時に Hugging Face からモデルがダウンロードされます）
-- **文字起こしが遅い**: GPU アクセラレーションが推奨されます。CPU のみモードは大幅に遅くなります
-
-### ウェイクワードが動作しない
-
-- 最初に "buddy" をはっきりと言ってください
-- GUI ログウィンドウで音声が文字起こしされているか確認してください
-- 無操作でスリープした場合は、再度 "buddy" と言ってください
+- **`Config error` で終了する**: `OPENAI_API_KEY` と `OPENAI_MODEL` を設定してください（`.env` または環境変数）。
+- **ウェイクワードが動かない**: "buddy" をはっきり言ってください。無操作でスリープした場合も、再度 "buddy" が必要です。
+- **反応が鈍い/過敏**: メニューの `Tools` → `ノイズキャリブレーション` を試してください。
+- **音声が途中で止まる**: アシスタント発話中に話しかけると再生が停止します。
+- **ローカル STT**: `uv sync --extra local-stt` で導入します。
+- **ログ**: 終了時に `logs/` 配下へ保存されます（不具合報告に添付してください）。
