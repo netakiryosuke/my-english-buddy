@@ -100,7 +100,6 @@ uv run pytest
 
 ## Troubleshooting
 
-- **App exits with `Config error`**: Ensure `OPENAI_API_KEY` and `OPENAI_MODEL` are set (in `.env` or your environment).
 - **Wake word not working**: Say "buddy" clearly. If the app went to sleep due to inactivity, say "buddy" again.
 - **Too sensitive / not detecting speech**: Use the menu `Tools` → `ノイズキャリブレーション` and try again.
 - **No voice / interrupted too easily**: Try speaking after the assistant finishes; speaking while it talks stops playback.
