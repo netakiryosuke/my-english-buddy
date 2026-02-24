@@ -31,7 +31,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --frozen --extra test
+          uv sync --frozen --extra test --extra lint
+
+      - name: Run linter
+        run: |
+          uv run ruff check .
 
       - name: Run tests
         run: |
