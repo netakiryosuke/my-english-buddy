@@ -1,5 +1,4 @@
 """Unit tests for application configuration."""
-from __future__ import annotations
 
 import os
 import tempfile

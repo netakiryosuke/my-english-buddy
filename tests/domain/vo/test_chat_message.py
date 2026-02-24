@@ -1,5 +1,4 @@
 """Unit tests for ChatMessage value object."""
-from __future__ import annotations
 
 import pytest
 from app.domain.vo.chat_message import ChatMessage, ChatRole

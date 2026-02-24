@@ -1,5 +1,4 @@
 """Unit tests for ConversationService."""
-from __future__ import annotations
 
 import unittest
 from unittest.mock import MagicMock

@@ -1,5 +1,4 @@
 """Unit tests for OpenAI SpeechToText."""
-from __future__ import annotations
 
 from unittest.mock import Mock
 import pytest

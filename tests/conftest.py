@@ -1,5 +1,4 @@
 """Common fixtures and configuration for pytest."""
-from __future__ import annotations
 
 import pytest
 from unittest.mock import MagicMock

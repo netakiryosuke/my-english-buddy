@@ -1,5 +1,4 @@
 """Unit tests for application error classes."""
-from __future__ import annotations
 
 import pytest
 

@@ -1,5 +1,4 @@
 """Unit tests for OpenAI ChatClient."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock, Mock
 import pytest
