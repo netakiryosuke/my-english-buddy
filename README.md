@@ -4,92 +4,46 @@
 
 My English Buddy is a desktop application for English conversation practice powered by OpenAI APIs.
 
-It continuously listens to your microphone, transcribes your speech with OpenAI Speech-to-Text, generates conversational replies using OpenAI Chat Completions, and speaks them back using OpenAI Text-to-Speech. The app features a simple GUI window that displays the conversation log.
+It continuously listens to your microphone, transcribes your speech, generates replies, and speaks them back. A simple GUI window shows the conversation log.
 
-This project is still **work in progress**. The README is intentionally practical rather than exhaustive.
+## Quickstart
 
-## Overview
+### Windows (PowerShell)
 
-- **Interface**: GUI application (PySide6) with conversation log display
-- **Input**: continuous microphone listening with automatic speech detection
-- **Wake Word**: say "buddy" to activate the conversation (once per session)
-- **Transcription**: OpenAI audio transcription API (hard-coded to `gpt-4o-mini-transcribe`)
-- **Reply**: OpenAI Chat Completions API using `OPENAI_MODEL`
-- **Speech Output**: OpenAI Text-to-Speech API (hard-coded to `gpt-4o-mini-tts` with `alloy` voice)
-- **Memory**: in-memory conversation history (up to 50 messages) persists during the session
-- **Interruption**: you can interrupt the assistant's speech by speaking, and it will stop immediately
+```powershell
+Copy-Item .env.example .env
+# Edit .env and set OPENAI_API_KEY and OPENAI_MODEL
 
-Current limitations (expected at this stage):
-
-- Memory is not saved between sessions (cleared on restart)
-- Conversation history is exported to `logs/` directory as text files, but cannot be re-imported
-- TTS model and voice are not configurable via environment variables
-
-## Requirements
-
-- **Python**: 3.12 (see `.python-version`)
-- **OpenAI API key**: with access to the models used (transcription, chat, TTS)
-- **Microphone access** and a working audio stack
-- **Audio output** (speakers or headphones)
-- **uv** (recommended): the repo includes `uv.lock`
-
-## Setup
-
-1) Create your environment file:
-
-```bash
-cp .env.example .env
-```
-
-2) Edit `.env` and set at least `OPENAI_API_KEY` and `OPENAI_MODEL`.
-
-3) Install dependencies (recommended):
-
-```bash
 uv sync
-```
+Copy-Item prompt.txt.example prompt.txt  # optional (custom system prompt)
 
-4) Run the application:
-
-```bash
 uv run python -m app.main
 ```
 
-The GUI window will open and start listening. Say "buddy" to wake it up, then speak naturally in English. The assistant will reply with voice.
-
-Optional: customize the system prompt (recommended):
+### macOS/Linux/WSL
 
 ```bash
-cp prompt.txt.example prompt.txt
-# Edit prompt.txt to customize the assistant's behavior
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY and OPENAI_MODEL
+
+uv sync
+cp prompt.txt.example prompt.txt  # optional (custom system prompt)
+
+uv run python -m app.main
 ```
 
-If you want to load a different dotenv file:
+Say “buddy” to wake it up, then speak in English.
 
-```bash
-uv run python -m app.main --env-file path/to/.env
-```
+Optional:
+- Use a different dotenv file: `uv run python -m app.main --env-file path/to/.env`
+- Disable dotenv loading: `uv run python -m app.main --env-file ""`
 
-To disable dotenv loading entirely, pass an empty value:
+## Behavior
 
-```bash
-uv run python -m app.main --env-file ""
-```
-
-## How It Works
-
-1. **Listening**: The app continuously listens to your microphone in the background
-2. **Wake Word**: Say "buddy" to activate the conversation (required only once per session)
-3. **Speech Input**: After waking up, speak naturally; the app detects when you stop speaking
-4. **Transcription**: Your speech is transcribed to text using OpenAI Speech-to-Text API
-5. **Chat**: The transcribed text is sent to OpenAI Chat Completions API with conversation history
-6. **Speech Output**: The assistant's reply is synthesized to speech using OpenAI Text-to-Speech API
-7. **Playback**: The speech is played through your speakers/headphones
-8. **Interruption**: You can interrupt the assistant by speaking while it's talking
-
-**Memory Management:**
-
-The conversation memory stores up to 50 messages total during the session. When generating replies, it uses the most recent 20 messages as context to keep the conversation focused. Memory is cleared when the app restarts.
+- **Wake word**: say “buddy” to start. After ~3 minutes of inactivity, it goes back to sleep and you’ll need to say “buddy” again.
+- **Interruption**: speaking while the assistant talks stops playback immediately.
+- **Memory**: in-memory only (up to 50 messages; uses the latest 20 as context). Not saved between app restarts.
+- **Logs**: saved on app exit to `logs/YYYY-MM-DD_HH-MM-SS.txt`.
 
 ## Environment Variables
 
@@ -102,6 +56,8 @@ You can configure the app via environment variables (typically in `.env`).
 | `OPENAI_BASE_URL` | No | - | Override API base URL (useful for proxies/compatible endpoints). |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` | No | - | Inline system prompt text. If set, it takes priority over the prompt file. |
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` | No | `prompt.txt` | Path to a text file containing the system prompt. Used only if the file exists and is non-empty. |
+| `MY_ENGLISH_BUDDY_STT_PROVIDER` | No | `openai` | Speech-to-Text provider: `openai` (default) or `local` (faster-whisper). |
+| `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` | No | `distil-large-v3` | Model name for local STT (e.g., `distil-large-v3`, `large-v3`, `medium`). Only used when `MY_ENGLISH_BUDDY_STT_PROVIDER=local`. |
 
 System prompt resolution order:
 
@@ -109,66 +65,43 @@ System prompt resolution order:
 2) `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: `prompt.txt`) if file exists and is non-empty
 3) Built-in default prompt in the application
 
-## Configuration
+## Optional: Local Speech-to-Text
 
-### System Prompt
-
-The system prompt defines the assistant's personality and behavior. You can customize it in three ways (in priority order):
-
-1. **Environment variable**: Set `MY_ENGLISH_BUDDY_SYSTEM_PROMPT` directly
-2. **Prompt file**: Create/edit the file specified in `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` (default: `prompt.txt`)
-3. **Built-in default**: If neither is provided, the app uses a built-in English tutor prompt
+You can switch from OpenAI STT to local offline transcription (faster-whisper):
 
 Example:
 
 ```bash
-# Using a custom prompt file
-cp prompt.txt.example prompt.txt
-# Edit prompt.txt with your preferred instructions
+uv sync --extra local-stt
 
-# or use an environment variable
-export MY_ENGLISH_BUDDY_SYSTEM_PROMPT="You are a friendly English tutor. Keep replies short."
-uv run python -m app.main
+# Enable local STT (add these to your .env)
+MY_ENGLISH_BUDDY_STT_PROVIDER=local
+# Optional
+MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3
 ```
+
+Notes:
+- GPU acceleration is optional; the app falls back to CPU if CUDA libraries are missing.
+- `OPENAI_API_KEY` is still required for chat and TTS.
 
 ## Development
 
 ### Running Tests
 
-The project includes unit tests for core application logic. To run tests:
+The project includes unit tests. To run tests:
 
 ```bash
-uv sync  # Install test dependencies
+# Install test dependencies
+uv sync --extra test
+
+# Run tests
 uv run pytest
 ```
 
-Note: Test coverage is currently limited to core application logic. Infrastructure and GUI layer tests are planned for future development.
-
 ## Troubleshooting
 
-### Microphone Not Working
-
-- **macOS/Linux**: Ensure the terminal or Python has microphone permissions in System Preferences/Settings
-- **All platforms**: Check that your microphone is properly connected and set as the default input device
-- Run a simple audio test to verify your microphone works outside this app
-
-### No Sound Output
-
-- Verify your speakers/headphones are connected and working
-- Check system volume settings
-- Ensure OpenAI TTS API is accessible (check API key and network connection)
-
-### OpenAI API Errors
-
-- Verify `OPENAI_API_KEY` is set correctly in `.env`
-- Check that your API key has access to the required models:
-  - `gpt-4o-mini-transcribe` (Speech-to-Text)
-  - Your chosen `OPENAI_MODEL` (Chat Completions)
-  - `gpt-4o-mini-tts` (Text-to-Speech)
-- Verify network connectivity to OpenAI services
-
-### Wake Word Not Working
-
-- Ensure you say "buddy" clearly at the beginning
-- Check the GUI log window to see if your speech is being transcribed
-- The wake word only needs to be said once per session
+- **Wake word not working**: Say "buddy" clearly. If the app went to sleep due to inactivity, say "buddy" again.
+- **Too sensitive / not detecting speech**: Use the menu `Tools` → `ノイズキャリブレーション` and try again.
+- **No voice / interrupted too easily**: Try speaking after the assistant finishes; speaking while it talks stops playback.
+- **Local STT**: Install with `uv sync --extra local-stt`.
+- **Logs**: On exit, a log file is saved to `logs/` (use it when reporting issues).
