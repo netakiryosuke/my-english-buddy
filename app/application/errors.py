@@ -1,5 +1,3 @@
-
-
 class ExternalServiceError(RuntimeError):
     """Raised when an external service call fails (provider-agnostic)."""
 

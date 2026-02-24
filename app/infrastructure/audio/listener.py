@@ -1,4 +1,3 @@
-
 from collections.abc import Callable
 from contextlib import suppress
 from queue import Empty, Full, Queue

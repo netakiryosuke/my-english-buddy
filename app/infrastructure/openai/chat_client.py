@@ -1,4 +1,3 @@
-
 from typing import Sequence, TypeAlias
 
 from openai import OpenAI, OpenAIError

@@ -1,4 +1,3 @@
-
 from typing import Protocol, Sequence
 
 from app.domain.vo.chat_message import ChatMessage

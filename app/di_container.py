@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 from openai import OpenAI
