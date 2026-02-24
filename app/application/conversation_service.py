@@ -1,11 +1,10 @@
 
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import cast
 
+from app.application.port.chat_client import ChatClient
 from app.domain.entity.conversation_memory import ConversationMemory
 from app.domain.vo.chat_message import ChatMessage
-from app.application.port.chat_client import ChatClient
 
 
 @dataclass

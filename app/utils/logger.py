@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
+
 class Logger:
     def __init__(
         self,

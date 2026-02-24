@@ -1,11 +1,12 @@
 """Unit tests for OpenAI ChatClient."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
+
 import pytest
 
-from app.infrastructure.openai.chat_client import OpenAIChatClient
-from app.domain.vo.chat_message import ChatMessage
 from app.application.errors import ChatClientError
+from app.domain.vo.chat_message import ChatMessage
+from app.infrastructure.openai.chat_client import OpenAIChatClient
 
 
 class TestOpenAIChatClient:

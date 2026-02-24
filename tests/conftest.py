@@ -1,8 +1,9 @@
 """Common fixtures and configuration for pytest."""
 
-import pytest
 from unittest.mock import MagicMock
+
 import numpy as np
+import pytest
 
 from app.domain.vo.chat_message import ChatMessage
 

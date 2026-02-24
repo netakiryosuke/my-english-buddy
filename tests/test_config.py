@@ -3,6 +3,7 @@
 import os
 import tempfile
 from pathlib import Path
+
 import pytest
 
 from app.config import AppConfig, OpenAIConfig, SpeechToTextConfig

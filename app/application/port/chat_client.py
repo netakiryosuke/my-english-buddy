@@ -1,7 +1,7 @@
 
 from typing import Protocol, Sequence
 
-from app.domain.vo.chat_message import ChatMessage, ChatRole
+from app.domain.vo.chat_message import ChatMessage
 
 
 class ChatClient(Protocol):

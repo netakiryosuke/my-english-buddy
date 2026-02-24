@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import MagicMock
 
 from app.application.conversation_service import ConversationService
-from app.domain.entity.conversation_memory import ConversationMemory
 from app.application.port.chat_client import ChatClient
+from app.domain.entity.conversation_memory import ConversationMemory
 
 
 class TestConversationService(unittest.TestCase):

@@ -1,11 +1,12 @@
 """Unit tests for OpenAI SpeechToText."""
 
 from unittest.mock import Mock
-import pytest
-import numpy as np
 
-from app.infrastructure.openai.speech_to_text import SpeechToText
+import numpy as np
+import pytest
+
 from app.application.errors import SpeechToTextError
+from app.infrastructure.openai.speech_to_text import SpeechToText
 
 
 class TestSpeechToText:

@@ -3,11 +3,13 @@ from typing import Sequence, TypeAlias
 
 from openai import OpenAI, OpenAIError
 
-from app.domain.vo.chat_message import ChatMessage
 from app.application.errors import ChatClientError
+from app.domain.vo.chat_message import ChatMessage
 
 try:
-    from openai.types.chat import ChatCompletionMessageParam as _ChatCompletionMessageParam
+    from openai.types.chat import (
+        ChatCompletionMessageParam as _ChatCompletionMessageParam,
+    )
 
     ChatCompletionMessageParam: TypeAlias = _ChatCompletionMessageParam
 except (ImportError, ModuleNotFoundError):
