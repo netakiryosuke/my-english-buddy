@@ -73,6 +73,11 @@ Example:
 
 ```bash
 uv sync --extra local-stt
+
+# Enable local STT (add these to your .env)
+MY_ENGLISH_BUDDY_STT_PROVIDER=local
+# Optional
+MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3
 ```
 
 Notes:
