@@ -1,20 +1,18 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from openai import OpenAI
 
 from app.application.conversation_runner import ConversationRunner
 from app.application.conversation_service import ConversationService
-from app.infrastructure.audio.listener import Listener
-from app.infrastructure.audio.speaker import Speaker
-from app.config import AppConfig
-from app.infrastructure.openai.chat_client import OpenAIChatClient
-from app.infrastructure.openai.speech_to_text import SpeechToText as OpenAISpeechToText
-from app.infrastructure.openai.text_to_speech import TextToSpeech as OpenAITextToSpeech
 from app.application.port.chat_client import ChatClient
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
+from app.config import AppConfig
+from app.infrastructure.audio.listener import Listener
+from app.infrastructure.audio.speaker import Speaker
+from app.infrastructure.openai.chat_client import OpenAIChatClient
+from app.infrastructure.openai.speech_to_text import SpeechToText as OpenAISpeechToText
+from app.infrastructure.openai.text_to_speech import TextToSpeech as OpenAITextToSpeech
 from app.utils.logger import Logger
 
 

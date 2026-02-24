@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from app.domain.vo.chat_message import ChatMessage, ChatRole
 
 

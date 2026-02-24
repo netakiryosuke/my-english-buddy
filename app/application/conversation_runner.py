@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Callable
 from queue import Empty, Full, Queue
 from threading import BoundedSemaphore, Event, Lock, Thread

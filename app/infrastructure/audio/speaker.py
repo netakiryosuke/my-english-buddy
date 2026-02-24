@@ -1,5 +1,5 @@
-from threading import Event
 import time
+from threading import Event
 
 import numpy as np
 import sounddevice as sd

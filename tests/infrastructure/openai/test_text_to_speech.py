@@ -1,12 +1,12 @@
 """Unit tests for OpenAI TextToSpeech."""
-from __future__ import annotations
 
 from unittest.mock import Mock
-import pytest
-import numpy as np
 
-from app.infrastructure.openai.text_to_speech import TextToSpeech
+import numpy as np
+import pytest
+
 from app.application.errors import TextToSpeechError
+from app.infrastructure.openai.text_to_speech import TextToSpeech
 
 
 class TestTextToSpeech:

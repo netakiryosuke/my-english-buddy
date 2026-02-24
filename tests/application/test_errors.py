@@ -1,11 +1,10 @@
 """Unit tests for application error classes."""
-from __future__ import annotations
 
 import pytest
 
 from app.application.errors import (
-    ExternalServiceError,
     ChatClientError,
+    ExternalServiceError,
     SpeechToTextError,
     TextToSpeechError,
 )

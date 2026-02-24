@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 class ExternalServiceError(RuntimeError):
     """Raised when an external service call fails (provider-agnostic)."""
 

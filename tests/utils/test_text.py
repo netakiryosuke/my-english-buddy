@@ -1,9 +1,9 @@
 """Unit tests for text utilities."""
-from __future__ import annotations
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
 
 from app.utils.text import read_text_file
 

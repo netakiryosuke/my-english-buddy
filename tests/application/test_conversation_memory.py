@@ -1,5 +1,4 @@
 """Unit tests for ConversationMemory."""
-from __future__ import annotations
 
 import unittest
 

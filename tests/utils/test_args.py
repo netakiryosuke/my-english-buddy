@@ -1,5 +1,4 @@
 """Unit tests for argument parsing."""
-from __future__ import annotations
 
 from app.utils.args import parse_args
 

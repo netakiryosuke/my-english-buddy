@@ -1,9 +1,9 @@
 """Unit tests for application configuration."""
-from __future__ import annotations
 
 import os
 import tempfile
 from pathlib import Path
+
 import pytest
 
 from app.config import AppConfig, OpenAIConfig, SpeechToTextConfig

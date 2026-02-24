@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Literal
-
 
 ChatRole = Literal["system", "user", "assistant"]
 
