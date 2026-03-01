@@ -63,6 +63,10 @@ class ConversationRunner:
         self._last_interrupted_at: float = 0.0
         self._interrupted_context_ttl_seconds: float = 8.0
 
+        # Tracks what Buddy is currently speaking so we can provide interruption context
+        # even when we only decide to interrupt after STT confirms real user speech.
+        self._currently_speaking_text: str | None = None
+
         # Optional hooks for UI/observers.
         self.on_calibration_start: Callable[[], None] | None = None
         self.on_calibration_end: Callable[[float], None] | None = None
@@ -129,8 +133,16 @@ class ConversationRunner:
             if not user_text:
                 return
 
-            # Fallback: if the user spoke while Buddy was speaking, stop playback as soon as possible.
-            self.stop_speaking_event.set()
+            # If Buddy is currently speaking and STT produced non-empty text, treat it as a real
+            # user interruption and stop playback (do NOT stop on mere noise detection).
+            with self._state_lock:
+                is_speaking_now = self.is_speaking_event.is_set()
+                current_speaking_text = self._currently_speaking_text
+
+            if is_speaking_now:
+                self.stop_speaking_event.set()
+                interrupted = True
+                interrupted_assistant_text = current_speaking_text
 
             with self._state_lock:
                 is_awake = self.is_awake
@@ -192,7 +204,8 @@ class ConversationRunner:
         self._listener_thread = self.listener.listen(
             utterance_queue=self.utterance_queue,
             stop_event=self.stop_listening_event,
-            on_speech_start=self._on_user_speech_start,
+            # Do not stop Buddy on raw noise detection; interruption is decided after STT.
+            on_speech_start=None,
             on_calibration_start=self._on_calibration_start,
             on_calibration_end=self._on_calibration_end,
             on_calibration_error=self._on_calibration_error,
@@ -214,12 +227,8 @@ class ConversationRunner:
             self.on_calibration_error(error)
 
     def _on_user_speech_start(self) -> None:
-        # Called from Listener's background listening loop when speech starts;
-        # should be fast and non-blocking.
-        if self.is_speaking_event.is_set():
-            self.stop_speaking_event.set()
-            with self._state_lock:
-                self._interrupt_pending_event.set()
+        # Deprecated: interruption is now decided after STT confirms actual speech.
+        return
 
     def _log(self, message: str) -> None:
         if self.logger:
@@ -318,6 +327,9 @@ class ConversationRunner:
                 self.stop_speaking_event.clear()
                 self.is_speaking_event.set()
 
+                with self._state_lock:
+                    self._currently_speaking_text = item.text
+
                 reply_audio = self.tts.synthesize(item.text)
 
                 with self._state_lock:
@@ -349,4 +361,6 @@ class ConversationRunner:
                 self.stop_speaking_event.set()
                 continue
             finally:
+                with self._state_lock:
+                    self._currently_speaking_text = None
                 self.is_speaking_event.clear()
