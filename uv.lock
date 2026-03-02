@@ -472,6 +472,9 @@ local-stt = [
 test = [
     { name = "pytest" },
 ]
+vad = [
+    { name = "webrtcvad" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -484,8 +487,9 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.9.0" },
     { name = "scipy", specifier = ">=1.17.0" },
     { name = "sounddevice", specifier = ">=0.5.5" },
+    { name = "webrtcvad", marker = "extra == 'vad'", specifier = ">=2.0.10" },
 ]
-provides-extras = ["test", "lint", "local-stt"]
+provides-extras = ["test", "lint", "local-stt", "vad"]
 
 [[package]]
 name = "numpy"
@@ -1104,3 +1108,9 @@ sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
 ]
+
+[[package]]
+name = "webrtcvad"
+version = "2.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/34/e2de2d97f3288512b9ea56f92e7452f8207eb5a0096500badf9dfd48f5e6/webrtcvad-2.0.10.tar.gz", hash = "sha256:f1bed2fb25b63fb7b1a55d64090c993c9c9167b28485ae0bcdd81cf6ede96aea", size = 66156, upload-time = "2017-01-07T23:05:18.732Z" }
