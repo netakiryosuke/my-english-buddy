@@ -6,6 +6,11 @@ from threading import Event, Lock, Thread
 import numpy as np
 import sounddevice as sd
 
+try:
+    import webrtcvad  # type: ignore
+except (ModuleNotFoundError, ImportError, OSError):  # Optional dependency (binary extension can fail to load).
+    webrtcvad = None
+
 
 class Listener:
     def __init__(
@@ -17,6 +22,11 @@ class Listener:
         chunk_duration: float = 0.1,
         calibration_duration: float = 1.0,
         noise_threshold_multiplier: float = 3.0,
+        voice_gate_enabled: bool = True,
+        voice_gate_aggressiveness: int = 2,
+        voice_gate_frame_ms: int = 20,
+        voice_gate_min_speech_ms: int = 250,
+        voice_gate_min_speech_ratio: float = 0.12,
     ):
         self.sample_rate = sample_rate
         self.channels = channels
@@ -24,6 +34,12 @@ class Listener:
         self.chunk_duration = chunk_duration
         self.calibration_duration = calibration_duration
         self.noise_threshold_multiplier = noise_threshold_multiplier
+
+        self.voice_gate_enabled = voice_gate_enabled
+        self.voice_gate_aggressiveness = voice_gate_aggressiveness
+        self.voice_gate_frame_ms = voice_gate_frame_ms
+        self.voice_gate_min_speech_ms = voice_gate_min_speech_ms
+        self.voice_gate_min_speech_ratio = voice_gate_min_speech_ratio
 
         self._recalibration_requested = Event()
         self._threshold_lock = Lock()
@@ -175,8 +191,9 @@ class Listener:
 
                 if speech_detected and silent_time >= self.silence_duration:
                     if frames:
-                        utterance = np.concatenate(frames, axis=0)
-                        self._put_drop_oldest(utterance_queue, utterance)
+                        if self._voice_gate_accepts(frames=frames):
+                            utterance = np.concatenate(frames, axis=0)
+                            self._put_drop_oldest(utterance_queue, utterance)
 
                     frames = []
                     silent_time = 0.0
@@ -185,8 +202,108 @@ class Listener:
 
         # Drain any partial utterance on stop.
         if frames and speech_detected:
-            utterance = np.concatenate(frames, axis=0)
-            self._put_drop_oldest(utterance_queue, utterance)
+            if self._voice_gate_accepts(frames=frames):
+                utterance = np.concatenate(frames, axis=0)
+                self._put_drop_oldest(utterance_queue, utterance)
+
+    def _voice_gate_accepts(
+        self,
+        *,
+        frames: list[np.ndarray],
+    ) -> bool:
+        if not self.voice_gate_enabled:
+            return True
+        if webrtcvad is None:
+            # Optional dependency not installed; keep existing behavior.
+            return True
+
+        # Remove the trailing silence tail we intentionally captured for end-of-utterance detection.
+        # This improves VAD speech ratio for short utterances and avoids classifying the silence.
+        silence_chunks = int(self.silence_duration / self.chunk_duration)
+        vad_frames = frames
+        if silence_chunks > 0 and len(frames) > silence_chunks:
+            vad_frames = frames[:-silence_chunks]
+
+        if not vad_frames:
+            return False
+
+        try:
+            return self._is_voice_like_frames(vad_frames)
+        except Exception:
+            # Treat VAD as an optional best-effort gate. If it fails at runtime,
+            # do not crash the listener thread; fall back to the previous behavior.
+            return True
+
+    def _is_voice_like_frames(self, frames: list[np.ndarray]) -> bool:
+        # WebRTC VAD supports only 8/16/32/48kHz mono, 16-bit PCM.
+        if self.sample_rate not in {8000, 16000, 32000, 48000}:
+            return True
+
+        frame_ms = int(self.voice_gate_frame_ms)
+        if frame_ms not in (10, 20, 30):
+            frame_ms = 20
+
+        frame_samples = int(self.sample_rate * frame_ms / 1000)
+        if frame_samples <= 0:
+            return True
+
+        try:
+            aggressiveness = int(self.voice_gate_aggressiveness)
+        except (TypeError, ValueError):
+            aggressiveness = 3
+        if aggressiveness < 0:
+            aggressiveness = 0
+        elif aggressiveness > 3:
+            aggressiveness = 3
+
+        vad = webrtcvad.Vad(aggressiveness)
+
+        # Stream VAD over the buffered chunks without concatenating them into a single large array.
+        speech_frames = 0
+        total_frames = 0
+        leftover = np.empty((0,), dtype=np.int16)
+
+        for chunk in frames:
+            chunk_arr = np.asarray(chunk, dtype=np.float32)
+            if chunk_arr.ndim == 2:
+                # (samples, channels)
+                chunk_1d = chunk_arr.mean(axis=1)
+            else:
+                chunk_1d = chunk_arr
+
+            chunk_1d = np.clip(chunk_1d, -1.0, 1.0)
+            pcm16 = (chunk_1d * 32767).astype(np.int16)
+
+            if leftover.size > 0:
+                pcm16 = np.concatenate([leftover, pcm16], axis=0)
+                leftover = np.empty((0,), dtype=np.int16)
+
+            frames_in_chunk = len(pcm16) // frame_samples
+            if frames_in_chunk <= 0:
+                leftover = pcm16
+                continue
+
+            total_frames += frames_in_chunk
+            for i in range(frames_in_chunk):
+                start = i * frame_samples
+                end = start + frame_samples
+                frame_bytes = pcm16[start:end].tobytes()
+                if vad.is_speech(frame_bytes, self.sample_rate):
+                    speech_frames += 1
+
+            remainder = frames_in_chunk * frame_samples
+            if remainder < len(pcm16):
+                leftover = pcm16[remainder:]
+
+        if total_frames <= 0:
+            return False
+
+        speech_ms = speech_frames * frame_ms
+        speech_ratio = speech_frames / total_frames
+
+        return (speech_ms >= int(self.voice_gate_min_speech_ms)) and (
+            speech_ratio >= float(self.voice_gate_min_speech_ratio)
+        )
 
     @staticmethod
     def _put_drop_oldest(queue: Queue[np.ndarray], item: np.ndarray) -> None:

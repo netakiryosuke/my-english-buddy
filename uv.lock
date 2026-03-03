@@ -472,6 +472,10 @@ local-stt = [
 test = [
     { name = "pytest" },
 ]
+vad = [
+    { name = "webrtcvad", marker = "sys_platform != 'win32'" },
+    { name = "webrtcvad-wheels", marker = "sys_platform == 'win32'" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -484,8 +488,10 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.9.0" },
     { name = "scipy", specifier = ">=1.17.0" },
     { name = "sounddevice", specifier = ">=0.5.5" },
+    { name = "webrtcvad", marker = "sys_platform != 'win32' and extra == 'vad'", specifier = ">=2.0.10" },
+    { name = "webrtcvad-wheels", marker = "sys_platform == 'win32' and extra == 'vad'", specifier = ">=2.0.12" },
 ]
-provides-extras = ["test", "lint", "local-stt"]
+provides-extras = ["test", "lint", "local-stt", "vad"]
 
 [[package]]
 name = "numpy"
@@ -1103,4 +1109,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464", size = 75949, upload-time = "2025-10-01T02:14:41.687Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
+]
+
+[[package]]
+name = "webrtcvad"
+version = "2.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/34/e2de2d97f3288512b9ea56f92e7452f8207eb5a0096500badf9dfd48f5e6/webrtcvad-2.0.10.tar.gz", hash = "sha256:f1bed2fb25b63fb7b1a55d64090c993c9c9167b28485ae0bcdd81cf6ede96aea", size = 66156, upload-time = "2017-01-07T23:05:18.732Z" }
+
+[[package]]
+name = "webrtcvad-wheels"
+version = "2.0.14"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/ba/3a8ce2cff3eee72a39ed190e5f9dac792da1526909c97a11589590b21739/webrtcvad_wheels-2.0.14.tar.gz", hash = "sha256:5f59c8e291c6ef102d9f39532982fbf26a52ce2de6328382e2654b0960fea397", size = 70607, upload-time = "2024-09-05T10:17:02.471Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/7c/ac5a40ca80a09e978968b7065528ce340295115d1af2b1e0a98aa0ac0244/webrtcvad_wheels-2.0.14-cp312-cp312-win32.whl", hash = "sha256:68e2041d1a30dc619a0e7ff5adaa948a6b862fa6e6d4d85337f235240707eab5", size = 17364, upload-time = "2024-09-05T10:15:21.162Z" },
+    { url = "https://files.pythonhosted.org/packages/24/1d/9a8f4c842ca880253821acf165080077b245577719e5e03b13e3c45853c5/webrtcvad_wheels-2.0.14-cp312-cp312-win_amd64.whl", hash = "sha256:4010b95b31b9b360fd1bf47a8344b06b946ec866cf3d14fb39fc692307ddf312", size = 19901, upload-time = "2024-09-05T10:15:21.96Z" },
+    { url = "https://files.pythonhosted.org/packages/77/36/52e8998f8421c746defa8f8b509cab4aac984ef39a2cd5818f664901d245/webrtcvad_wheels-2.0.14-cp313-cp313-win32.whl", hash = "sha256:ff2a7eb4fe2189a7766726d6122b319df3e727c4cfed86409e2802fed1b459d3", size = 17368, upload-time = "2024-09-05T10:15:35.973Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/7c/73b9dd022c835e19180aad8aafd2f33863c02cbbafd5bc599dd54f6c1111/webrtcvad_wheels-2.0.14-cp313-cp313-win_amd64.whl", hash = "sha256:561f87975930833a5b77135fb6f15e6df430bfc000c327dc517a175aef15a707", size = 19901, upload-time = "2024-09-05T10:15:36.877Z" },
 ]

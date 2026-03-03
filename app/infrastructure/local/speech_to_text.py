@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 
 from app.application.errors import SpeechToTextError
@@ -26,19 +28,46 @@ class SpeechToText:
         device: str = "cuda",
         compute_type: str = "float16",
         language: str = "en",
+        vad_filter: bool = True,
+        vad_threshold: float = 0.6,
+        vad_min_speech_duration_ms: int = 250,
+        vad_min_silence_duration_ms: int = 600,
+        vad_speech_pad_ms: int = 200,
         logger: Logger | None = None,
     ) -> None:
         self.model_name = model
         self.language = language
         self._logger = logger
 
+        self._vad_filter = bool(vad_filter)
+        # These are passed to faster-whisper's Silero VAD integration.
+        # Keep defaults conservative: reduce false positives without breaking short wake words.
+        self._vad_parameters: dict[str, float | int] = {
+            "threshold": float(vad_threshold),
+            "min_speech_duration_ms": int(vad_min_speech_duration_ms),
+            "min_silence_duration_ms": int(vad_min_silence_duration_ms),
+            "speech_pad_ms": int(vad_speech_pad_ms),
+        }
+
         self.device: str | None = None
         self.compute_type: str | None = None
+
+        self._transcribe_supports_vad_filter: bool = False
+        self._transcribe_supports_vad_parameters: bool = False
+        self._logged_no_vad_support: bool = False
 
         self._log(
             "[STT] Initializing local STT (faster-whisper): "
             f"model={self.model_name}, requested_device={device}, requested_compute_type={compute_type}"
         )
+
+        if self._vad_filter:
+            self._log(
+                "[STT] Local STT VAD enabled: "
+                f"vad_parameters={self._vad_parameters}"
+            )
+        else:
+            self._log("[STT] Local STT VAD disabled")
 
         preferred_device = device
         preferred_compute_type = compute_type
@@ -76,10 +105,6 @@ class SpeechToText:
                     )
                     self.device = "cpu"
                     self.compute_type = "int8"
-                    self._log(
-                        "[STT] Local STT initialized: device=cpu, compute_type=int8"
-                    )
-                    return
                 except Exception as cpu_e:
                     raise SpeechToTextError(
                         "Failed to initialize local STT model on GPU and CPU. "
@@ -101,6 +126,23 @@ class SpeechToText:
             f"[STT] Local STT initialized: device={self.device}, compute_type={self.compute_type}"
         )
         self._log(self._format_cuda_device_info())
+
+        self._detect_transcribe_feature_support()
+
+    def _detect_transcribe_feature_support(self) -> None:
+        # Feature-detect supported kwargs for transcribe() to avoid relying on TypeError messages.
+        try:
+            params = inspect.signature(self._model.transcribe).parameters
+            self._transcribe_supports_vad_filter = "vad_filter" in params
+            self._transcribe_supports_vad_parameters = "vad_parameters" in params
+        except Exception as e:
+            # Be conservative if introspection fails; do not attempt to pass VAD kwargs.
+            self._log(
+                "[STT] Failed to inspect transcribe() signature; disabling VAD kwargs. "
+                f"Error: {e}"
+            )
+            self._transcribe_supports_vad_filter = False
+            self._transcribe_supports_vad_parameters = False
 
     def _log(self, message: str) -> None:
         if not message:
@@ -144,14 +186,26 @@ class SpeechToText:
             audio_1d = np.clip(audio_1d, -1.0, 1.0)
             audio_1d = np.ascontiguousarray(audio_1d)
 
-            segments, _info = self._model.transcribe(
-                audio_1d,
-                language=self.language,
-                vad_filter=False,
-                condition_on_previous_text=False,
-                without_timestamps=True,
-                beam_size=5,
-            )
+            base_kwargs = {
+                "language": self.language,
+                "condition_on_previous_text": False,
+                "without_timestamps": True,
+                "beam_size": 5,
+            }
+
+            transcribe_kwargs = dict(base_kwargs)
+            if self._transcribe_supports_vad_filter:
+                transcribe_kwargs["vad_filter"] = bool(self._vad_filter)
+
+            if self._vad_filter:
+                if self._transcribe_supports_vad_parameters:
+                    transcribe_kwargs["vad_parameters"] = self._vad_parameters
+                elif not self._logged_no_vad_support:
+                    # VAD requested but not supported by the installed faster-whisper version.
+                    self._logged_no_vad_support = True
+                    self._log("[STT] Installed faster-whisper does not support vad_parameters; continuing without it.")
+
+            segments, _info = self._model.transcribe(audio_1d, **transcribe_kwargs)
 
             # `segments` is a generator; force evaluation.
             text = "".join(segment.text for segment in segments).strip()

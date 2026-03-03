@@ -26,6 +26,11 @@ local-stt = [
     "faster-whisper>=1.2.1",
 ]
 
+vad = [
+    "webrtcvad-wheels>=2.0.12; platform_system == 'Windows'",
+    "webrtcvad>=2.0.10; platform_system != 'Windows'",
+]
+
 [tool.ruff]
 target-version = "py312"
 
