@@ -191,13 +191,11 @@ class SpeechToText:
             except TypeError as e:
                 # Backward/forward compatibility: some faster-whisper versions do not accept
                 # `vad_parameters` (or even `vad_filter`). If that happens, retry without VAD args.
-                message = str(e)
-                unexpected_kw = (
-                    "vad_parameters" in message
-                    or "vad_filter" in message
-                    or "unexpected keyword" in message.lower()
+                lower_msg = str(e).lower()
+                vad_kw_incompat = ("vad_parameters" in lower_msg) or (
+                    "vad_filter" in lower_msg
                 )
-                if not unexpected_kw:
+                if not vad_kw_incompat:
                     raise
 
                 self._log(

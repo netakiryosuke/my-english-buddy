@@ -8,7 +8,7 @@ import sounddevice as sd
 
 try:
     import webrtcvad  # type: ignore
-except ModuleNotFoundError:  # Optional dependency.
+except (ModuleNotFoundError, ImportError, OSError):  # Optional dependency (binary extension can fail to load).
     webrtcvad = None
 
 
@@ -192,7 +192,7 @@ class Listener:
                 if speech_detected and silent_time >= self.silence_duration:
                     if frames:
                         utterance = np.concatenate(frames, axis=0)
-                        if self._should_enqueue_utterance(frames=frames, utterance=utterance):
+                        if self._should_enqueue_utterance(frames=frames):
                             self._put_drop_oldest(utterance_queue, utterance)
 
                     frames = []
@@ -203,14 +203,13 @@ class Listener:
         # Drain any partial utterance on stop.
         if frames and speech_detected:
             utterance = np.concatenate(frames, axis=0)
-            if self._should_enqueue_utterance(frames=frames, utterance=utterance):
+            if self._should_enqueue_utterance(frames=frames):
                 self._put_drop_oldest(utterance_queue, utterance)
 
     def _should_enqueue_utterance(
         self,
         *,
         frames: list[np.ndarray],
-        utterance: np.ndarray,
     ) -> bool:
         if not self.voice_gate_enabled:
             return True
@@ -258,7 +257,16 @@ class Listener:
         if total_frames <= 0:
             return False
 
-        vad = webrtcvad.Vad(int(self.voice_gate_aggressiveness))
+        try:
+            aggressiveness = int(self.voice_gate_aggressiveness)
+        except (TypeError, ValueError):
+            aggressiveness = 3
+        if aggressiveness < 0:
+            aggressiveness = 0
+        elif aggressiveness > 3:
+            aggressiveness = 3
+
+        vad = webrtcvad.Vad(aggressiveness)
 
         speech_frames = 0
         for i in range(total_frames):

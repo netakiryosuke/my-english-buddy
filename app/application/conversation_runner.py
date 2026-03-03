@@ -46,7 +46,6 @@ class ConversationRunner:
         self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
         self.stop_speaking_event = Event()
         self.is_speaking_event = Event()
-        self._interrupt_pending_event = Event()
         self._state_lock = Lock()
         self._request_id = 0
         self._latest_request_id = 0
@@ -56,12 +55,6 @@ class ConversationRunner:
         self._sleep_watchdog_thread: Thread | None = None
         self._last_activity_at: float = monotonic()
         self._inflight_workers = 0
-
-        # Used to provide context to the next interrupted user utterance without
-        # committing it to memory.
-        self._last_interrupted_assistant_text: str | None = None
-        self._last_interrupted_at: float = 0.0
-        self._interrupted_context_ttl_seconds: float = 8.0
 
         # Tracks what Buddy is currently speaking so we can provide interruption context
         # even when we only decide to interrupt after STT confirms real user speech.
@@ -86,31 +79,11 @@ class ConversationRunner:
         while True:
             audio: np.ndarray = self.utterance_queue.get()
 
-            # Capture-and-clear atomically to avoid losing an interrupt that might be set
-            # between `is_set()` and `clear()` from the listener thread.
-            with self._state_lock:
-                interrupted = self._interrupt_pending_event.is_set()
-                if interrupted:
-                    self._interrupt_pending_event.clear()
-
-            interrupted_assistant_text: str | None = None
-            if interrupted:
-                with self._state_lock:
-                    if (
-                        self._last_interrupted_assistant_text
-                        and (monotonic() - self._last_interrupted_at)
-                        <= self._interrupted_context_ttl_seconds
-                    ):
-                        interrupted_assistant_text = self._last_interrupted_assistant_text
-                    # Consume it once; this context is only for the next interrupted utterance.
-                    self._last_interrupted_assistant_text = None
-                    self._last_interrupted_at = 0.0
-
             # Limit concurrent OpenAI calls.
             self._inflight_semaphore.acquire()
             worker = Thread(
                 target=self._process_utterance,
-                args=(audio, interrupted, interrupted_assistant_text),
+                args=(audio,),
                 daemon=True,
             )
             try:
@@ -120,29 +93,28 @@ class ConversationRunner:
                 self._inflight_semaphore.release()
                 continue
 
-    def _process_utterance(
-        self,
-        audio: np.ndarray,
-        interrupted: bool,
-        interrupted_assistant_text: str | None,
-    ) -> None:
+    def _process_utterance(self, audio: np.ndarray) -> None:
         with self._state_lock:
             self._inflight_workers += 1
         try:
+            # Snapshot speaking state before STT so we don't miss an interruption
+            # due to STT latency.
+            with self._state_lock:
+                was_speaking = self.is_speaking_event.is_set()
+                speaking_text = self._currently_speaking_text
+
             user_text = self.stt.transcribe(audio)
             if not user_text:
                 return
 
             # If Buddy is currently speaking and STT produced non-empty text, treat it as a real
             # user interruption and stop playback (do NOT stop on mere noise detection).
-            with self._state_lock:
-                is_speaking_now = self.is_speaking_event.is_set()
-                current_speaking_text = self._currently_speaking_text
-
-            if is_speaking_now:
+            interrupted = False
+            interrupted_assistant_text: str | None = None
+            if was_speaking:
                 self.stop_speaking_event.set()
                 interrupted = True
-                interrupted_assistant_text = current_speaking_text
+                interrupted_assistant_text = speaking_text
 
             with self._state_lock:
                 is_awake = self.is_awake
@@ -227,7 +199,7 @@ class ConversationRunner:
             self.on_calibration_error(error)
 
     def _on_user_speech_start(self) -> None:
-        # Deprecated: interruption is now decided after STT confirms actual speech.
+        # Reserved for future use.
         return
 
     def _log(self, message: str) -> None:
@@ -344,11 +316,6 @@ class ConversationRunner:
                     self._log(
                         f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
                     )
-                    with self._state_lock:
-                        # Make the interrupted assistant text available to the next interrupted
-                        # utterance only (ephemeral context; not committed to memory).
-                        self._last_interrupted_assistant_text = item.text
-                        self._last_interrupted_at = monotonic()
                 else:
                     # If playback completed, the user heard this reply, so commit it to memory.
                     # Do not gate on `_latest_request_id` here: it can change while speaking,
