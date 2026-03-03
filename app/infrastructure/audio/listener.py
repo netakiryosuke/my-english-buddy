@@ -227,7 +227,12 @@ class Listener:
         if not vad_frames:
             return False
 
-        return self._is_voice_like_frames(vad_frames)
+        try:
+            return self._is_voice_like_frames(vad_frames)
+        except Exception:
+            # Treat VAD as an optional best-effort gate. If it fails at runtime,
+            # do not crash the listener thread; fall back to the previous behavior.
+            return True
 
     def _is_voice_like_frames(self, frames: list[np.ndarray]) -> bool:
         # WebRTC VAD supports only 8/16/32/48kHz mono, 16-bit PCM.

@@ -105,10 +105,6 @@ class SpeechToText:
                     )
                     self.device = "cpu"
                     self.compute_type = "int8"
-                    self._log(
-                        "[STT] Local STT initialized: device=cpu, compute_type=int8"
-                    )
-                    return
                 except Exception as cpu_e:
                     raise SpeechToTextError(
                         "Failed to initialize local STT model on GPU and CPU. "
@@ -131,6 +127,9 @@ class SpeechToText:
         )
         self._log(self._format_cuda_device_info())
 
+        self._detect_transcribe_feature_support()
+
+    def _detect_transcribe_feature_support(self) -> None:
         # Feature-detect supported kwargs for transcribe() to avoid relying on TypeError messages.
         try:
             params = inspect.signature(self._model.transcribe).parameters
@@ -138,7 +137,10 @@ class SpeechToText:
             self._transcribe_supports_vad_parameters = "vad_parameters" in params
         except Exception as e:
             # Be conservative if introspection fails; do not attempt to pass VAD kwargs.
-            self._log(f"[STT] Failed to inspect transcribe() signature; disabling VAD kwargs. Error: {e}")
+            self._log(
+                "[STT] Failed to inspect transcribe() signature; disabling VAD kwargs. "
+                f"Error: {e}"
+            )
             self._transcribe_supports_vad_filter = False
             self._transcribe_supports_vad_parameters = False
 
