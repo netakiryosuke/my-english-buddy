@@ -297,10 +297,11 @@ class ConversationRunner:
 
             try:
                 self.stop_speaking_event.clear()
-                self.is_speaking_event.set()
 
+                # Keep speaking state and speaking text consistent for readers that snapshot both.
                 with self._state_lock:
                     self._currently_speaking_text = item.text
+                    self.is_speaking_event.set()
 
                 reply_audio = self.tts.synthesize(item.text)
 
@@ -329,5 +330,5 @@ class ConversationRunner:
                 continue
             finally:
                 with self._state_lock:
+                    self.is_speaking_event.clear()
                     self._currently_speaking_text = None
-                self.is_speaking_event.clear()

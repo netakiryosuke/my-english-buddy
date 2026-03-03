@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 
 from app.application.errors import SpeechToTextError
@@ -49,6 +51,10 @@ class SpeechToText:
 
         self.device: str | None = None
         self.compute_type: str | None = None
+
+        self._transcribe_supports_vad_filter: bool = False
+        self._transcribe_supports_vad_parameters: bool = False
+        self._logged_no_vad_support: bool = False
 
         self._log(
             "[STT] Initializing local STT (faster-whisper): "
@@ -125,6 +131,17 @@ class SpeechToText:
         )
         self._log(self._format_cuda_device_info())
 
+        # Feature-detect supported kwargs for transcribe() to avoid relying on TypeError messages.
+        try:
+            params = inspect.signature(self._model.transcribe).parameters
+            self._transcribe_supports_vad_filter = "vad_filter" in params
+            self._transcribe_supports_vad_parameters = "vad_parameters" in params
+        except Exception as e:
+            # Be conservative if introspection fails; do not attempt to pass VAD kwargs.
+            self._log(f"[STT] Failed to inspect transcribe() signature; disabling VAD kwargs. Error: {e}")
+            self._transcribe_supports_vad_filter = False
+            self._transcribe_supports_vad_parameters = False
+
     def _log(self, message: str) -> None:
         if not message:
             return
@@ -174,35 +191,19 @@ class SpeechToText:
                 "beam_size": 5,
             }
 
-            try:
-                if self._vad_filter:
-                    segments, _info = self._model.transcribe(
-                        audio_1d,
-                        **base_kwargs,
-                        vad_filter=True,
-                        vad_parameters=self._vad_parameters,
-                    )
-                else:
-                    segments, _info = self._model.transcribe(
-                        audio_1d,
-                        **base_kwargs,
-                        vad_filter=False,
-                    )
-            except TypeError as e:
-                # Backward/forward compatibility: some faster-whisper versions do not accept
-                # `vad_parameters` (or even `vad_filter`). If that happens, retry without VAD args.
-                lower_msg = str(e).lower()
-                vad_kw_incompat = ("vad_parameters" in lower_msg) or (
-                    "vad_filter" in lower_msg
-                )
-                if not vad_kw_incompat:
-                    raise
+            transcribe_kwargs = dict(base_kwargs)
+            if self._transcribe_supports_vad_filter:
+                transcribe_kwargs["vad_filter"] = bool(self._vad_filter)
 
-                self._log(
-                    "[STT] faster-whisper does not support VAD kwargs; retrying without them. "
-                    f"Original error: {e}"
-                )
-                segments, _info = self._model.transcribe(audio_1d, **base_kwargs)
+            if self._vad_filter:
+                if self._transcribe_supports_vad_parameters:
+                    transcribe_kwargs["vad_parameters"] = self._vad_parameters
+                elif not self._logged_no_vad_support:
+                    # VAD requested but not supported by the installed faster-whisper version.
+                    self._logged_no_vad_support = True
+                    self._log("[STT] Installed faster-whisper does not support vad_parameters; continuing without it.")
+
+            segments, _info = self._model.transcribe(audio_1d, **transcribe_kwargs)
 
             # `segments` is a generator; force evaluation.
             text = "".join(segment.text for segment in segments).strip()

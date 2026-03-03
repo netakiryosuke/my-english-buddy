@@ -191,8 +191,8 @@ class Listener:
 
                 if speech_detected and silent_time >= self.silence_duration:
                     if frames:
-                        utterance = np.concatenate(frames, axis=0)
-                        if self._should_enqueue_utterance(frames=frames):
+                        if self._voice_gate_accepts(frames=frames):
+                            utterance = np.concatenate(frames, axis=0)
                             self._put_drop_oldest(utterance_queue, utterance)
 
                     frames = []
@@ -202,11 +202,11 @@ class Listener:
 
         # Drain any partial utterance on stop.
         if frames and speech_detected:
-            utterance = np.concatenate(frames, axis=0)
-            if self._should_enqueue_utterance(frames=frames):
+            if self._voice_gate_accepts(frames=frames):
+                utterance = np.concatenate(frames, axis=0)
                 self._put_drop_oldest(utterance_queue, utterance)
 
-    def _should_enqueue_utterance(
+    def _voice_gate_accepts(
         self,
         *,
         frames: list[np.ndarray],
@@ -218,7 +218,7 @@ class Listener:
             return True
 
         # Remove the trailing silence tail we intentionally captured for end-of-utterance detection.
-        # This improves VAD speech ratio for short utterances.
+        # This improves VAD speech ratio for short utterances and avoids classifying the silence.
         silence_chunks = int(self.silence_duration / self.chunk_duration)
         vad_frames = frames
         if silence_chunks > 0 and len(frames) > silence_chunks:
@@ -227,23 +227,12 @@ class Listener:
         if not vad_frames:
             return False
 
-        audio = np.concatenate(vad_frames, axis=0)
-        return self._is_voice_like(audio)
+        return self._is_voice_like_frames(vad_frames)
 
-    def _is_voice_like(self, audio: np.ndarray) -> bool:
+    def _is_voice_like_frames(self, frames: list[np.ndarray]) -> bool:
         # WebRTC VAD supports only 8/16/32/48kHz mono, 16-bit PCM.
         if self.sample_rate not in {8000, 16000, 32000, 48000}:
             return True
-
-        audio_arr = np.asarray(audio, dtype=np.float32)
-        if audio_arr.ndim == 2:
-            # (samples, channels)
-            audio_1d = audio_arr.mean(axis=1)
-        else:
-            audio_1d = audio_arr
-
-        audio_1d = np.clip(audio_1d, -1.0, 1.0)
-        pcm16 = (audio_1d * 32767).astype(np.int16)
 
         frame_ms = int(self.voice_gate_frame_ms)
         if frame_ms not in (10, 20, 30):
@@ -252,10 +241,6 @@ class Listener:
         frame_samples = int(self.sample_rate * frame_ms / 1000)
         if frame_samples <= 0:
             return True
-
-        total_frames = len(pcm16) // frame_samples
-        if total_frames <= 0:
-            return False
 
         try:
             aggressiveness = int(self.voice_gate_aggressiveness)
@@ -268,13 +253,45 @@ class Listener:
 
         vad = webrtcvad.Vad(aggressiveness)
 
+        # Stream VAD over the buffered chunks without concatenating them into a single large array.
         speech_frames = 0
-        for i in range(total_frames):
-            start = i * frame_samples
-            end = start + frame_samples
-            frame_bytes = pcm16[start:end].tobytes()
-            if vad.is_speech(frame_bytes, self.sample_rate):
-                speech_frames += 1
+        total_frames = 0
+        leftover = np.empty((0,), dtype=np.int16)
+
+        for chunk in frames:
+            chunk_arr = np.asarray(chunk, dtype=np.float32)
+            if chunk_arr.ndim == 2:
+                # (samples, channels)
+                chunk_1d = chunk_arr.mean(axis=1)
+            else:
+                chunk_1d = chunk_arr
+
+            chunk_1d = np.clip(chunk_1d, -1.0, 1.0)
+            pcm16 = (chunk_1d * 32767).astype(np.int16)
+
+            if leftover.size > 0:
+                pcm16 = np.concatenate([leftover, pcm16], axis=0)
+                leftover = np.empty((0,), dtype=np.int16)
+
+            frames_in_chunk = len(pcm16) // frame_samples
+            if frames_in_chunk <= 0:
+                leftover = pcm16
+                continue
+
+            total_frames += frames_in_chunk
+            for i in range(frames_in_chunk):
+                start = i * frame_samples
+                end = start + frame_samples
+                frame_bytes = pcm16[start:end].tobytes()
+                if vad.is_speech(frame_bytes, self.sample_rate):
+                    speech_frames += 1
+
+            remainder = frames_in_chunk * frame_samples
+            if remainder < len(pcm16):
+                leftover = pcm16[remainder:]
+
+        if total_frames <= 0:
+            return False
 
         speech_ms = speech_frames * frame_ms
         speech_ratio = speech_frames / total_frames
