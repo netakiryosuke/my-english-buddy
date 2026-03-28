@@ -10,6 +10,7 @@ from app.application.conversation_service import ConversationService
 from app.application.errors import ExternalServiceError
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
+from app.application.wake_word_detector import WakeWordDetector
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
 from app.utils.logger import Logger
@@ -21,7 +22,6 @@ class _ReplyItem(NamedTuple):
 
 
 class ConversationRunner:
-    WAKE_WORDS = ["buddy"]
     SLEEP_TIMEOUT_SECONDS = 180.0
     SLEEP_POLL_INTERVAL_SECONDS = 0.5
 
@@ -40,6 +40,7 @@ class ConversationRunner:
         self.tts = tts
         self.speaker = speaker
         self.logger = logger
+        self._wake_word_detector = WakeWordDetector()
         self.is_awake = False
         self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
         self.stop_listening_event = Event()
@@ -207,8 +208,7 @@ class ConversationRunner:
             self.logger.log(message)
 
     def _detect_wake_word(self, text: str) -> bool:
-        normalized_text = text.lower()
-        return any(wake_word in normalized_text for wake_word in self.WAKE_WORDS)
+        return self._wake_word_detector.detect(text)
 
     def _next_request_id(self) -> int:
         with self._state_lock:
