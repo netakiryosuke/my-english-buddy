@@ -8,6 +8,7 @@ import numpy as np
 
 from app.application.conversation_service import ConversationService
 from app.application.errors import ExternalServiceError
+from app.application.interruption_context import build_interruption_prompt
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
 from app.application.wake_word_detector import WakeWordDetector
@@ -111,11 +112,9 @@ class ConversationRunner:
             # If Buddy is currently speaking and STT produced non-empty text, treat it as a real
             # user interruption and stop playback (do NOT stop on mere noise detection).
             interrupted = False
-            interrupted_assistant_text: str | None = None
             if was_speaking:
                 self.stop_speaking_event.set()
                 interrupted = True
-                interrupted_assistant_text = speaking_text
 
             with self._state_lock:
                 is_awake = self.is_awake
@@ -130,26 +129,10 @@ class ConversationRunner:
 
             self._log(f"You: {user_text}")
 
-            ephemeral_system_prompt = (
-                "The user started speaking while the assistant was speaking. "
-                "Treat the user's next message as an interruption that may be a correction or a follow-up question. "
-                "Respond naturally."
-                if interrupted
-                else None
+            ephemeral_system_prompt = build_interruption_prompt(
+                was_speaking=was_speaking,
+                speaking_text=speaking_text if interrupted else None,
             )
-
-            if interrupted and interrupted_assistant_text:
-                # Keep this provider-agnostic and do not commit it to memory.
-                # Tell the model to ignore it if irrelevant to avoid topic pollution.
-                ephemeral_system_prompt = (
-                    (ephemeral_system_prompt or "")
-                    + "\n\n"
-                    + "The assistant was in the middle of saying: \""
-                    + interrupted_assistant_text.strip()
-                    + "\". "
-                    + "If the user's message seems to respond to or correct that, use it as context; "
-                    + "otherwise ignore it and answer the user's message normally."
-                )
 
             request_id = self._next_request_id()
             reply = self.conversation_service.prepare_reply(
