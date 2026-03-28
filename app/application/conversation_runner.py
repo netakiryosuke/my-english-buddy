@@ -1,8 +1,7 @@
 from collections.abc import Callable
-from queue import Empty, Full, Queue
+from queue import Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
 from time import monotonic, sleep
-from typing import NamedTuple
 
 import numpy as np
 
@@ -11,15 +10,11 @@ from app.application.errors import ExternalServiceError
 from app.application.interruption_context import build_interruption_prompt
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
+from app.application.reply_queue import LatestReplyQueue
 from app.application.wake_word_detector import WakeWordDetector
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
 from app.utils.logger import Logger
-
-
-class _ReplyItem(NamedTuple):
-    request_id: int
-    text: str
 
 
 class ConversationRunner:
@@ -45,12 +40,10 @@ class ConversationRunner:
         self.is_awake = False
         self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
         self.stop_listening_event = Event()
-        self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
+        self.reply_queue = LatestReplyQueue()
         self.stop_speaking_event = Event()
         self.is_speaking_event = Event()
         self._state_lock = Lock()
-        self._request_id = 0
-        self._latest_request_id = 0
         self._inflight_semaphore = BoundedSemaphore(value=2)
         self._listener_thread: Thread | None = None
 
@@ -134,7 +127,7 @@ class ConversationRunner:
                 speaking_text=speaking_text if interrupted else None,
             )
 
-            request_id = self._next_request_id()
+            request_id = self.reply_queue.next_request_id()
             reply = self.conversation_service.prepare_reply(
                 user_text,
                 ephemeral_system_prompt=ephemeral_system_prompt,
@@ -143,7 +136,7 @@ class ConversationRunner:
                 return
 
             self._log(f"Buddy: {reply}")
-            self._publish_reply_if_latest(request_id=request_id, reply=reply)
+            self.reply_queue.publish(request_id=request_id, text=reply)
         except ExternalServiceError as e:
             self._log(f"External service error: {e}")
         except (OSError, RuntimeError, ValueError) as e:
@@ -193,30 +186,6 @@ class ConversationRunner:
     def _detect_wake_word(self, text: str) -> bool:
         return self._wake_word_detector.detect(text)
 
-    def _next_request_id(self) -> int:
-        with self._state_lock:
-            self._request_id += 1
-            self._latest_request_id = self._request_id
-            return self._request_id
-
-    def _publish_reply_if_latest(self, *, request_id: int, reply: str) -> None:
-        with self._state_lock:
-            if request_id != self._latest_request_id:
-                return
-
-        item = _ReplyItem(request_id=request_id, text=reply)
-
-        try:
-            while True:
-                self.reply_queue.get_nowait()
-        except Empty:
-            pass
-
-        try:
-            self.reply_queue.put_nowait(item)
-        except Full:
-            pass
-
     def _start_speaker_thread(self) -> None:
         thread = Thread(
             target=self._speaker_loop,
@@ -250,12 +219,11 @@ class ConversationRunner:
             self._log("Sleeping (idle timeout). Say 'Buddy' to start.")
 
     def _should_sleep(self, *, now: float) -> bool:
-        # Public, lock-taking wrapper.
         with self._state_lock:
             return self._should_sleep_unsafe(now=now)
 
     def _should_sleep_unsafe(self, *, now: float) -> bool:
-        # Internal helper that assumes _state_lock is already held.
+        # Assumes _state_lock is already held by the caller.
         if not self.is_awake:
             return False
 
@@ -274,9 +242,8 @@ class ConversationRunner:
             if not item.text:
                 continue
 
-            with self._state_lock:
-                if item.request_id != self._latest_request_id:
-                    continue
+            if not self.reply_queue.is_latest(item.request_id):
+                continue
 
             try:
                 self.stop_speaking_event.clear()
@@ -288,9 +255,8 @@ class ConversationRunner:
 
                 reply_audio = self.tts.synthesize(item.text)
 
-                with self._state_lock:
-                    if item.request_id != self._latest_request_id:
-                        continue
+                if not self.reply_queue.is_latest(item.request_id):
+                    continue
 
                 completed = self.speaker.speak(
                     reply_audio,
@@ -302,7 +268,7 @@ class ConversationRunner:
                     )
                 else:
                     # If playback completed, the user heard this reply, so commit it to memory.
-                    # Do not gate on `_latest_request_id` here: it can change while speaking,
+                    # Do not gate on `latest_request_id` here: it can change while speaking,
                     # which would otherwise create a "heard but not remembered" inconsistency.
                     self.conversation_service.commit_assistant_reply(item.text)
                     with self._state_lock:
