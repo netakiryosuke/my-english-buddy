@@ -2,9 +2,9 @@ from collections.abc import Callable
 from threading import Event, Lock, Thread
 
 from app.application.errors import ExternalServiceError
+from app.application.port.speaker import Speaker
 from app.application.port.text_to_speech import TextToSpeech
 from app.application.reply_queue import LatestReplyQueue
-from app.infrastructure.audio.speaker import Speaker
 from app.utils.logger import Logger
 
 

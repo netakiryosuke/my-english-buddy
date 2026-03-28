@@ -8,6 +8,7 @@ import numpy as np
 from app.application.conversation_service import ConversationService
 from app.application.errors import ExternalServiceError
 from app.application.interruption_context import build_interruption_prompt
+from app.application.port.speaker import Speaker
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
 from app.application.reply_queue import LatestReplyQueue
@@ -15,7 +16,6 @@ from app.application.sleep_watchdog import SleepWatchdog
 from app.application.speaker_loop import SpeakerLoop
 from app.application.wake_word_detector import WakeWordDetector
 from app.infrastructure.audio.listener import Listener
-from app.infrastructure.audio.speaker import Speaker
 from app.utils.logger import Logger
 
 
