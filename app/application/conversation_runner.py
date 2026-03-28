@@ -105,16 +105,14 @@ class ConversationRunner:
 
             # If Buddy is currently speaking and STT produced non-empty text, treat it as a real
             # user interruption and stop playback (do NOT stop on mere noise detection).
-            interrupted = False
             if was_speaking:
                 self._speaker_loop.stop_speaking()
-                interrupted = True
 
             with self._state_lock:
                 is_awake = self.is_awake
 
             if not is_awake:
-                if self._detect_wake_word(user_text):
+                if self._wake_word_detector.detect(user_text):
                     with self._state_lock:
                         self.is_awake = True
                         self._last_activity_at = monotonic()
@@ -125,7 +123,7 @@ class ConversationRunner:
 
             ephemeral_system_prompt = build_interruption_prompt(
                 was_speaking=was_speaking,
-                speaking_text=speaking_text if interrupted else None,
+                speaking_text=speaking_text,
             )
 
             request_id = self.reply_queue.next_request_id()
@@ -176,16 +174,9 @@ class ConversationRunner:
         if self.on_calibration_error:
             self.on_calibration_error(error)
 
-    def _on_user_speech_start(self) -> None:
-        # Reserved for future use.
-        return
-
     def _log(self, message: str) -> None:
         if self.logger:
             self.logger.log(message)
-
-    def _detect_wake_word(self, text: str) -> bool:
-        return self._wake_word_detector.detect(text)
 
     def _start_speaker_thread(self) -> None:
         self._speaker_loop.start()

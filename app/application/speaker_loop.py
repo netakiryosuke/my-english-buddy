@@ -37,6 +37,7 @@ class SpeakerLoop:
         # callers can snapshot both atomically.
         self._speaking_lock = Lock()
         self._currently_speaking_text: str | None = None
+        self._thread: Thread | None = None
 
     @property
     def is_speaking(self) -> bool:
@@ -52,9 +53,11 @@ class SpeakerLoop:
         self._stop_event.set()
 
     def start(self) -> Thread:
-        thread = Thread(target=self._loop, daemon=True)
-        thread.start()
-        return thread
+        if self._thread is not None:
+            raise RuntimeError("SpeakerLoop is already running")
+        self._thread = Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        return self._thread
 
     def _loop(self) -> None:
         while True:

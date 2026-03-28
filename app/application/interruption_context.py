@@ -21,10 +21,7 @@ def build_interruption_prompt(
         # Keep this provider-agnostic and do not commit it to memory.
         # Tell the model to ignore it if irrelevant to avoid topic pollution.
         prompt += (
-            "\n\n"
-            "The assistant was in the middle of saying: \""
-            + speaking_text.strip()
-            + "\". "
+            f'\n\nThe assistant was in the middle of saying: "{speaking_text.strip()}". '
             "If the user's message seems to respond to or correct that, use it as context; "
             "otherwise ignore it and answer the user's message normally."
         )
