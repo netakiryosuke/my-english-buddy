@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from queue import Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
-from time import monotonic, sleep
+from time import monotonic
 
 import numpy as np
 
@@ -11,6 +11,7 @@ from app.application.interruption_context import build_interruption_prompt
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
 from app.application.reply_queue import LatestReplyQueue
+from app.application.sleep_watchdog import SleepWatchdog
 from app.application.wake_word_detector import WakeWordDetector
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
@@ -197,30 +198,29 @@ class ConversationRunner:
         if self._sleep_watchdog_thread and self._sleep_watchdog_thread.is_alive():
             return
 
-        self._sleep_watchdog_thread = Thread(
-            target=self._sleep_watchdog_loop,
-            daemon=True,
+        watchdog = SleepWatchdog(
+            timeout=self.SLEEP_TIMEOUT_SECONDS,
+            poll_interval=self.SLEEP_POLL_INTERVAL_SECONDS,
+            should_sleep=self._should_sleep,
+            on_sleep=self._try_go_to_sleep,
+            logger=self.logger,
         )
-        self._sleep_watchdog_thread.start()
+        self._sleep_watchdog_thread = watchdog.start()
 
-    def _sleep_watchdog_loop(self) -> None:
-        while True:
-            sleep(self.SLEEP_POLL_INTERVAL_SECONDS)
-
-            if not self._should_sleep(now=monotonic()):
-                continue
-
-            with self._state_lock:
-                # Re-check under lock to avoid races.
-                if not self._should_sleep_unsafe(now=monotonic()):
-                    continue
-                self.is_awake = False
-
-            self._log("Sleeping (idle timeout). Say 'Buddy' to start.")
-
-    def _should_sleep(self, *, now: float) -> bool:
+    def _should_sleep(self) -> bool:
         with self._state_lock:
-            return self._should_sleep_unsafe(now=now)
+            return self._should_sleep_unsafe(now=monotonic())
+
+    def _try_go_to_sleep(self) -> bool:
+        """Atomically transition to sleep if the condition still holds.
+
+        Returns True when sleep was applied, False when a race was detected.
+        """
+        with self._state_lock:
+            if not self._should_sleep_unsafe(now=monotonic()):
+                return False
+            self.is_awake = False
+        return True
 
     def _should_sleep_unsafe(self, *, now: float) -> bool:
         # Assumes _state_lock is already held by the caller.
