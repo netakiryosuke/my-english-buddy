@@ -195,7 +195,6 @@ class ConversationRunner:
             return
 
         watchdog = SleepWatchdog(
-            timeout=self.SLEEP_TIMEOUT_SECONDS,
             poll_interval=self.SLEEP_POLL_INTERVAL_SECONDS,
             should_sleep=self._should_sleep,
             on_sleep=self._try_go_to_sleep,
