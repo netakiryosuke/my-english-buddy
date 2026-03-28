@@ -12,6 +12,7 @@ from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
 from app.application.reply_queue import LatestReplyQueue
 from app.application.sleep_watchdog import SleepWatchdog
+from app.application.speaker_loop import SpeakerLoop
 from app.application.wake_word_detector import WakeWordDetector
 from app.infrastructure.audio.listener import Listener
 from app.infrastructure.audio.speaker import Speaker
@@ -42,8 +43,13 @@ class ConversationRunner:
         self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
         self.stop_listening_event = Event()
         self.reply_queue = LatestReplyQueue()
-        self.stop_speaking_event = Event()
-        self.is_speaking_event = Event()
+        self._speaker_loop = SpeakerLoop(
+            tts=tts,
+            speaker=speaker,
+            reply_queue=self.reply_queue,
+            on_reply_completed=self._on_reply_completed,
+            logger=logger,
+        )
         self._state_lock = Lock()
         self._inflight_semaphore = BoundedSemaphore(value=2)
         self._listener_thread: Thread | None = None
@@ -51,10 +57,6 @@ class ConversationRunner:
         self._sleep_watchdog_thread: Thread | None = None
         self._last_activity_at: float = monotonic()
         self._inflight_workers = 0
-
-        # Tracks what Buddy is currently speaking so we can provide interruption context
-        # even when we only decide to interrupt after STT confirms real user speech.
-        self._currently_speaking_text: str | None = None
 
         # Optional hooks for UI/observers.
         self.on_calibration_start: Callable[[], None] | None = None
@@ -95,9 +97,7 @@ class ConversationRunner:
         try:
             # Snapshot speaking state before STT so we don't miss an interruption
             # due to STT latency.
-            with self._state_lock:
-                was_speaking = self.is_speaking_event.is_set()
-                speaking_text = self._currently_speaking_text
+            was_speaking, speaking_text = self._speaker_loop.snapshot_speaking_state()
 
             user_text = self.stt.transcribe(audio)
             if not user_text:
@@ -107,7 +107,7 @@ class ConversationRunner:
             # user interruption and stop playback (do NOT stop on mere noise detection).
             interrupted = False
             if was_speaking:
-                self.stop_speaking_event.set()
+                self._speaker_loop.stop_speaking()
                 interrupted = True
 
             with self._state_lock:
@@ -188,11 +188,7 @@ class ConversationRunner:
         return self._wake_word_detector.detect(text)
 
     def _start_speaker_thread(self) -> None:
-        thread = Thread(
-            target=self._speaker_loop,
-            daemon=True,
-        )
-        thread.start()
+        self._speaker_loop.start()
 
     def _start_sleep_watchdog_thread(self) -> None:
         if self._sleep_watchdog_thread and self._sleep_watchdog_thread.is_alive():
@@ -228,56 +224,15 @@ class ConversationRunner:
             return False
 
         # Do not sleep while speaking or while there are inflight workers.
-        if self.is_speaking_event.is_set():
+        if self._speaker_loop.is_speaking:
             return False
         if self._inflight_workers > 0:
             return False
 
         return (now - self._last_activity_at) >= self.SLEEP_TIMEOUT_SECONDS
 
-    def _speaker_loop(self) -> None:
-        while True:
-            item = self.reply_queue.get()
-
-            if not item.text:
-                continue
-
-            if not self.reply_queue.is_latest(item.request_id):
-                continue
-
-            try:
-                self.stop_speaking_event.clear()
-
-                # Keep speaking state and speaking text consistent for readers that snapshot both.
-                with self._state_lock:
-                    self._currently_speaking_text = item.text
-                    self.is_speaking_event.set()
-
-                reply_audio = self.tts.synthesize(item.text)
-
-                if not self.reply_queue.is_latest(item.request_id):
-                    continue
-
-                completed = self.speaker.speak(
-                    reply_audio,
-                    stop_event=self.stop_speaking_event,
-                )
-                if not completed:
-                    self._log(
-                        f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
-                    )
-                else:
-                    # If playback completed, the user heard this reply, so commit it to memory.
-                    # Do not gate on `latest_request_id` here: it can change while speaking,
-                    # which would otherwise create a "heard but not remembered" inconsistency.
-                    self.conversation_service.commit_assistant_reply(item.text)
-                    with self._state_lock:
-                        self._last_activity_at = monotonic()
-            except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
-                self._log(f"Error in speaker loop: {e}")
-                self.stop_speaking_event.set()
-                continue
-            finally:
-                with self._state_lock:
-                    self.is_speaking_event.clear()
-                    self._currently_speaking_text = None
+    def _on_reply_completed(self, text: str) -> None:
+        """Called by SpeakerLoop when a reply has been played back in full."""
+        self.conversation_service.commit_assistant_reply(text)
+        with self._state_lock:
+            self._last_activity_at = monotonic()
