@@ -108,6 +108,21 @@ class TestConversationMemory(unittest.TestCase):
             memory.add_user(f"Message {i}")
         self.assertEqual(len(memory), 100)
 
+    def test_pop_last_returns_last_message(self):
+        """Test that pop_last removes and returns the last message."""
+        self.memory.add_user("First")
+        self.memory.add_assistant("Second")
+        popped = self.memory.pop_last()
+        self.assertIsNotNone(popped)
+        self.assertEqual(popped.role, "assistant")
+        self.assertEqual(popped.content, "Second")
+        self.assertEqual(len(self.memory), 1)
+
+    def test_pop_last_on_empty_returns_none(self):
+        """Test that pop_last returns None when memory is empty."""
+        result = self.memory.pop_last()
+        self.assertIsNone(result)
+
 
 if __name__ == "__main__":
     unittest.main()
