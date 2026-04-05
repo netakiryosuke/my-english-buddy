@@ -26,10 +26,26 @@ local-stt = [
     "faster-whisper>=1.2.1",
 ]
 
+local-tts = [
+    "kokoro>=0.9.4",
+    "misaki[ja]>=0.9.0",
+    "torch>=2.6.0",
+]
+
 vad = [
     "webrtcvad-wheels>=2.0.12; platform_system == 'Windows'",
     "webrtcvad>=2.0.10; platform_system != 'Windows'",
 ]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu124" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 [tool.ruff]
 target-version = "py312"
