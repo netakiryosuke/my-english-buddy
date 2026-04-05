@@ -6,13 +6,17 @@ from app.domain.entity.conversation_memory import ConversationMemory
 from app.domain.vo.chat_message import ChatMessage
 
 
+_DEFAULT_MAX_MEMORY_MESSAGES: int = 50
+_DEFAULT_MEMORY_WINDOW: int = 20
+
+
 @dataclass
 class ConversationService:
     chat_client: ChatClient
     conversation_memory: ConversationMemory = field(
-        default_factory=lambda: ConversationMemory(max_messages=50)
+        default_factory=lambda: ConversationMemory(max_messages=_DEFAULT_MAX_MEMORY_MESSAGES)
     )
-    memory_window: int = 20
+    memory_window: int = _DEFAULT_MEMORY_WINDOW
     system_prompt: str | None = (
         "You are My English Buddy. Answer in clear, friendly English. "
         "If the user writes Japanese, you may include short Japanese hints."

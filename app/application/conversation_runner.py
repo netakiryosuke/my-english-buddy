@@ -42,7 +42,7 @@ class ConversationRunner:
         self.logger = logger
         self._wake_word_detector = WakeWordDetector()
         self._is_awake = False
-        self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
+        self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=self._UTTERANCE_QUEUE_SIZE)
         self.stop_listening_event = Event()
         self.reply_queue = LatestReplyQueue()
         self._speaker_loop = SpeakerLoop(
@@ -53,7 +53,7 @@ class ConversationRunner:
             logger=logger,
         )
         self._state_lock = Lock()
-        self._inflight_semaphore = BoundedSemaphore(value=2)
+        self._inflight_semaphore = BoundedSemaphore(value=self._MAX_INFLIGHT_REQUESTS)
         self._listener_thread: Thread | None = None
 
         self._sleep_watchdog_thread: Thread | None = None
