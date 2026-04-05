@@ -102,7 +102,7 @@ MY_ENGLISH_BUDDY_TTS_LANG_CODE=a
 補足:
 - GPU（CUDA）推奨（低遅延）。CPU のみでも動作しますが遅くなります。
 - 初回起動時に Kokoro モデル（約 300 MB）が Hugging Face から自動ダウンロードされます。
-- Linux では CUDA 12.4 対応 PyTorch wheel が自動的に使われます。macOS や CPU のみの環境では PyPI の CPU wheel が使われます。
+- Linux では GPU の有無にかかわらず CUDA 12.4 用の PyTorch wheel index が使われます。macOS では PyPI の CPU wheel が使われます。CPU のみの Linux 環境でも CUDA wheel が選ばれますが、GPU なしでも動作します（ダウンロードサイズは大きくなります）。
 - チャットのために `OPENAI_API_KEY` は必要です。
 - **日本語 TTS**: `uv sync --extra local-tts` は英語サポートのみです。日本語 (`MY_ENGLISH_BUDDY_TTS_LANG_CODE=j`) を使う場合は追加で `uv sync --extra local-tts-ja` を実行してください。`local-tts-ja` には C/C++ ビルドツール（Linux/macOS）または Visual Studio Build Tools（Windows）が必要です。
 

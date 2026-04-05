@@ -33,7 +33,7 @@ local-tts = [
 ]
 
 # Japanese TTS support requires pyopenjtalk (C++ build tools needed on Windows).
-# Install separately: uv add "misaki[ja]" --optional local-tts
+# Install separately: uv sync --extra local-tts-ja
 local-tts-ja = [
     "misaki[ja]>=0.9.0",
 ]
@@ -45,7 +45,8 @@ vad = [
 
 [tool.uv.sources]
 torch = [
-    # CUDA 12.4 wheel (Linux GPU 環境向け)。macOS / CPU 環境は PyPI の CPU wheel を使う。
+    # Linux では GPU の有無にかかわらず CUDA 12.4 wheel index を使う。
+    # macOS など Linux 以外の環境では、PyPI 側の wheel を使う。
     { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
 ]
 
