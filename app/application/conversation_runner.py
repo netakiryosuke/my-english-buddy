@@ -194,7 +194,7 @@ class ConversationRunner:
         watchdog = SleepWatchdog(
             poll_interval=self.SLEEP_POLL_INTERVAL_SECONDS,
             should_sleep=self._should_sleep,
-            on_sleep=self._try_go_to_sleep,
+            attempt_sleep=self._try_go_to_sleep,
             logger=self.logger,
         )
         self._sleep_watchdog_thread = watchdog.start()
