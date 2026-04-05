@@ -3,6 +3,21 @@ import numpy as np
 from app.application.errors import TextToSpeechError
 from app.utils.logger import Logger
 
+try:
+    from kokoro import KPipeline
+except ModuleNotFoundError as e:
+    raise TextToSpeechError(
+        "Local TTS provider requires 'kokoro'. "
+        "Install it with: uv sync --extra local-tts"
+    ) from e
+except Exception as e:
+    raise TextToSpeechError(
+        "Failed to import local TTS dependencies. "
+        "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure your system can find their libraries "
+        "(for example via the OS's standard library search path). "
+        f"Original error: {e}"
+    ) from e
+
 _DEFAULT_VOICE = "af_heart"
 _DEFAULT_LANG_CODE = "a"  # American English
 
@@ -24,19 +39,6 @@ class TextToSpeech:
         )
 
         try:
-            from kokoro import KPipeline
-        except ModuleNotFoundError as e:
-            raise TextToSpeechError(
-                "Local TTS provider requires 'kokoro'. "
-                "Install it with: uv sync --extra local-tts"
-            ) from e
-        except Exception as e:
-            raise TextToSpeechError(
-                "Failed to import local TTS dependencies. "
-                f"Original error: {e}"
-            ) from e
-
-        try:
             # KPipeline のロード時にモデルが Hugging Face からダウンロードされる（初回のみ）。
             self._pipeline = KPipeline(lang_code=lang_code)
         except Exception as e:
@@ -44,9 +46,11 @@ class TextToSpeech:
                 f"Failed to initialize Kokoro TTS pipeline: {e}"
             ) from e
 
-        self._log("[TTS] Local TTS initialized.")
+        self._log(f"[TTS] Local TTS initialized: voice={self._voice}, lang_code={self._lang_code}")
 
     def _log(self, message: str) -> None:
+        if not message:
+            return
         if self._logger:
             self._logger.log(message)
 
