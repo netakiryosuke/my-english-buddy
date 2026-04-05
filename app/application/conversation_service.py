@@ -5,7 +5,6 @@ from app.application.port.chat_client import ChatClient
 from app.domain.entity.conversation_memory import ConversationMemory
 from app.domain.vo.chat_message import ChatMessage
 
-
 _DEFAULT_MAX_MEMORY_MESSAGES: int = 50
 _DEFAULT_MEMORY_WINDOW: int = 20
 

@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from threading import Event, Thread
-from time import monotonic
 
 from app.utils.logger import Logger
 
