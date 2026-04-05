@@ -52,10 +52,15 @@ class ConversationService:
             messages.extend(self.conversation_memory.recent(self.memory_window))
 
         reply = self.chat_client.complete_messages(messages=messages)
-        if not reply:
-            # Roll back the user message so it doesn't become an orphan in memory.
+        if not reply.strip():
+            # Roll back only if the last message is still the same user message
+            # we appended above. This avoids deleting a different message that may
+            # have been added by another thread while the lock was released during
+            # the external API call.
             with self._lock:
-                self.conversation_memory.pop_last()
+                last = self.conversation_memory.recent(1)
+                if last and last[-1].role == "user" and last[-1].content == user_text:
+                    self.conversation_memory.pop_last()
         return reply
 
     def commit_assistant_reply(self, reply: str) -> None:
