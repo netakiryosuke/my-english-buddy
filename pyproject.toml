@@ -28,8 +28,14 @@ local-stt = [
 
 local-tts = [
     "kokoro>=0.9.4",
-    "misaki[ja]>=0.9.0",
+    "misaki>=0.9.0",
     "torch>=2.6.0",
+]
+
+# Japanese TTS support requires pyopenjtalk (C++ build tools needed on Windows).
+# Install separately: uv add "misaki[ja]" --optional local-tts
+local-tts-ja = [
+    "misaki[ja]>=0.9.0",
 ]
 
 vad = [

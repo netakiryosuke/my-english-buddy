@@ -1051,9 +1051,12 @@ local-stt = [
 ]
 local-tts = [
     { name = "kokoro" },
-    { name = "misaki", extra = ["ja"] },
+    { name = "misaki" },
     { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "sys_platform == 'linux'" },
     { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+]
+local-tts-ja = [
+    { name = "misaki", extra = ["ja"] },
 ]
 test = [
     { name = "pytest" },
@@ -1067,7 +1070,8 @@ vad = [
 requires-dist = [
     { name = "faster-whisper", marker = "extra == 'local-stt'", specifier = ">=1.2.1" },
     { name = "kokoro", marker = "extra == 'local-tts'", specifier = ">=0.9.4" },
-    { name = "misaki", extras = ["ja"], marker = "extra == 'local-tts'", specifier = ">=0.9.0" },
+    { name = "misaki", marker = "extra == 'local-tts'", specifier = ">=0.9.0" },
+    { name = "misaki", extras = ["ja"], marker = "extra == 'local-tts-ja'", specifier = ">=0.9.0" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "openai", specifier = ">=2.16.0" },
     { name = "pyside6", specifier = ">=6.10.2" },
@@ -1081,7 +1085,7 @@ requires-dist = [
     { name = "webrtcvad", marker = "sys_platform != 'win32' and extra == 'vad'", specifier = ">=2.0.10" },
     { name = "webrtcvad-wheels", marker = "sys_platform == 'win32' and extra == 'vad'", specifier = ">=2.0.12" },
 ]
-provides-extras = ["test", "lint", "local-stt", "local-tts", "vad"]
+provides-extras = ["test", "lint", "local-stt", "local-tts", "local-tts-ja", "vad"]
 
 [[package]]
 name = "networkx"
