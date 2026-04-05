@@ -58,6 +58,9 @@ You can configure the app via environment variables (typically in `.env`).
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` | No | `prompt.txt` | Path to a text file containing the system prompt. Used only if the file exists and is non-empty. |
 | `MY_ENGLISH_BUDDY_STT_PROVIDER` | No | `openai` | Speech-to-Text provider: `openai` (default) or `local` (faster-whisper). |
 | `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` | No | `distil-large-v3` | Model name for local STT (e.g., `distil-large-v3`, `large-v3`, `medium`). Only used when `MY_ENGLISH_BUDDY_STT_PROVIDER=local`. |
+| `MY_ENGLISH_BUDDY_TTS_PROVIDER` | No | `openai` | Text-to-Speech provider: `openai` (default) or `local` (Kokoro). |
+| `MY_ENGLISH_BUDDY_TTS_VOICE` | No | *(provider default)* | Voice name. OpenAI default: `alloy`. Kokoro default: `af_heart`. |
+| `MY_ENGLISH_BUDDY_TTS_LANG_CODE` | No | `a` | Kokoro language code. `a`=American English, `j`=Japanese, `b`=British English. Only used when `MY_ENGLISH_BUDDY_TTS_PROVIDER=local`. |
 
 System prompt resolution order:
 
@@ -82,7 +85,27 @@ MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3
 
 Notes:
 - GPU acceleration is optional; the app falls back to CPU if CUDA libraries are missing.
-- `OPENAI_API_KEY` is still required for chat and TTS.
+- `OPENAI_API_KEY` is still required for chat.
+
+## Optional: Local Text-to-Speech
+
+You can switch from OpenAI TTS to Kokoro, a high-quality local TTS engine (no API calls, no running cost):
+
+```bash
+uv sync --extra local-tts
+
+# Enable local TTS (add these to your .env)
+MY_ENGLISH_BUDDY_TTS_PROVIDER=local
+# Optional: voice and language
+MY_ENGLISH_BUDDY_TTS_VOICE=af_heart
+MY_ENGLISH_BUDDY_TTS_LANG_CODE=a
+```
+
+Notes:
+- GPU (CUDA) is recommended for low latency; CPU-only works but is slower.
+- On first run the Kokoro model (~300 MB) is downloaded automatically from Hugging Face.
+- On Linux, the CUDA 12.4 PyTorch wheel is used automatically. On macOS or CPU-only Linux, the CPU wheel from PyPI is used instead.
+- `OPENAI_API_KEY` is still required for chat.
 
 ## Development
 
@@ -104,4 +127,5 @@ uv run pytest
 - **Too sensitive / not detecting speech**: Use the menu `Tools` → `ノイズキャリブレーション` and try again.
 - **No voice / interrupted too easily**: Try speaking after the assistant finishes; speaking while it talks stops playback.
 - **Local STT**: Install with `uv sync --extra local-stt`.
+- **Local TTS**: Install with `uv sync --extra local-tts`.
 - **Logs**: On exit, a log file is saved to `logs/` (use it when reporting issues).
