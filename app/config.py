@@ -22,7 +22,9 @@ class SpeechToTextConfig:
 @dataclass(frozen=True)
 class TextToSpeechConfig:
     provider: str = "openai"  # "openai" | "local"
-    voice: str = "af_heart"   # OpenAI: "alloy" etc. / Kokoro: "af_heart" etc.
+    # None の場合は各実装のデフォルトボイスを使用する。
+    # OpenAI: "alloy" / Kokoro: "af_heart"
+    voice: str | None = None
 
 
 @dataclass(frozen=True)
@@ -68,7 +70,6 @@ class AppConfig:
         system_prompt = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT") or None
         system_prompt_file = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE") or DEFAULT_SYSTEM_PROMPT_FILE
 
-        tts_defaults = TextToSpeechConfig()
         return AppConfig(
             openai=OpenAIConfig(
                 api_key=api_key,
@@ -81,7 +82,7 @@ class AppConfig:
             ),
             tts=TextToSpeechConfig(
                 provider=tts_provider,
-                voice=tts_voice if tts_voice is not None else tts_defaults.voice,
+                voice=tts_voice,
             ),
             system_prompt=system_prompt,
             system_prompt_file=system_prompt_file,

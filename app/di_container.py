@@ -68,7 +68,17 @@ def build_container(
             else:
                 stt = OpenAISpeechToText(client=openai_client)
 
-        tts = tts or OpenAITextToSpeech(client=openai_client)
+        if tts is None:
+            if config.tts.provider == "local":
+                from app.infrastructure.local.text_to_speech import (
+                    TextToSpeech as LocalTextToSpeech,
+                )
+
+                tts_kwargs = {"voice": config.tts.voice} if config.tts.voice else {}
+                tts = LocalTextToSpeech(**tts_kwargs)
+            else:
+                tts_kwargs = {"voice": config.tts.voice} if config.tts.voice else {}
+                tts = OpenAITextToSpeech(client=openai_client, **tts_kwargs)
 
     conversation_service = ConversationService(
         chat_client=chat_client,
