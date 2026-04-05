@@ -6,9 +6,18 @@ from app.utils.logger import Logger
 try:
     from kokoro import KPipeline
 except ModuleNotFoundError as e:
+    if e.name == "kokoro":
+        raise TextToSpeechError(
+            "Local TTS provider requires 'kokoro'. "
+            "Install it with: uv sync --extra local-tts"
+        ) from e
     raise TextToSpeechError(
-        "Local TTS provider requires 'kokoro'. "
-        "Install it with: uv sync --extra local-tts"
+        "Failed to import local TTS dependencies. "
+        f"Missing module: {e.name}. "
+        "Please ensure all required local TTS dependencies are installed. "
+        "If you want GPU acceleration, install CUDA 12 + cuDNN and ensure your system can find their libraries "
+        "(for example via the OS's standard library search path). "
+        f"Original error: {e}"
     ) from e
 except Exception as e:
     raise TextToSpeechError(
