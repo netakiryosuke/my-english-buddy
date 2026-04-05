@@ -27,7 +27,7 @@ class TextToSpeechConfig:
     # OpenAI: "alloy" / Kokoro: "af_heart"
     voice: str | None = None
     # Kokoro 専用: "a"=American English, "j"=Japanese, "b"=British English など
-    lang_code: str = "a"
+    local_lang_code: str = "a"
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ class AppConfig:
             tts=TextToSpeechConfig(
                 provider=tts_provider,
                 voice=tts_voice,
-                lang_code=tts_lang_code,
+                local_lang_code=tts_lang_code,
             ),
             system_prompt=system_prompt,
             system_prompt_file=system_prompt_file,

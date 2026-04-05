@@ -75,7 +75,7 @@ def build_container(
                     TextToSpeech as LocalTextToSpeech,
                 )
 
-                tts = LocalTextToSpeech(**tts_kwargs, lang_code=config.tts.lang_code, logger=logger)
+                tts = LocalTextToSpeech(**tts_kwargs, lang_code=config.tts.local_lang_code, logger=logger)
             else:
                 tts = OpenAITextToSpeech(client=openai_client, **tts_kwargs)
 
