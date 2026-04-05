@@ -15,13 +15,15 @@ from app.application.reply_queue import LatestReplyQueue
 from app.application.sleep_watchdog import SleepWatchdog
 from app.application.speaker_loop import SpeakerLoop
 from app.application.wake_word_detector import WakeWordDetector
-from app.infrastructure.audio.listener import Listener
+from app.application.port.listener import Listener
 from app.utils.logger import Logger
 
 
 class ConversationRunner:
     SLEEP_TIMEOUT_SECONDS = 180.0
     SLEEP_POLL_INTERVAL_SECONDS = 0.5
+    _MAX_INFLIGHT_REQUESTS: int = 2
+    _UTTERANCE_QUEUE_SIZE: int = 3
 
     def __init__(
         self,
