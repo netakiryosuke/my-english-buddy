@@ -67,7 +67,7 @@ class AppConfig:
             )
 
         tts_voice = (os.getenv("MY_ENGLISH_BUDDY_TTS_VOICE") or "").strip() or None
-        tts_lang_code = (os.getenv("MY_ENGLISH_BUDDY_TTS_LANG_CODE") or "a").strip()
+        tts_lang_code = (os.getenv("MY_ENGLISH_BUDDY_TTS_LANG_CODE") or "a").strip().lower()
 
         # TODO: In the real desktop app, this should likely be stored per-user
         # (e.g., in local storage) and editable in the UI.
