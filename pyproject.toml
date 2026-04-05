@@ -39,7 +39,8 @@ vad = [
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cu124" },
+    # CUDA 12.4 wheel (Linux GPU 環境向け)。macOS / CPU 環境は PyPI の CPU wheel を使う。
+    { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
 ]
 
 [[tool.uv.index]]
