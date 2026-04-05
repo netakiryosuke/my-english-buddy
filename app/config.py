@@ -20,9 +20,16 @@ class SpeechToTextConfig:
 
 
 @dataclass(frozen=True)
+class TextToSpeechConfig:
+    provider: str = "openai"  # "openai" | "local"
+    voice: str = "af_heart"   # OpenAI: "alloy" etc. / Kokoro: "af_heart" etc.
+
+
+@dataclass(frozen=True)
 class AppConfig:
     openai: OpenAIConfig
     stt: SpeechToTextConfig = SpeechToTextConfig()
+    tts: TextToSpeechConfig = TextToSpeechConfig()
     system_prompt: str | None = None
     system_prompt_file: str | None = DEFAULT_SYSTEM_PROMPT_FILE
 
@@ -47,11 +54,21 @@ class AppConfig:
 
         local_stt_model = (os.getenv("MY_ENGLISH_BUDDY_LOCAL_STT_MODEL") or "distil-large-v3").strip()
 
+        tts_provider = (os.getenv("MY_ENGLISH_BUDDY_TTS_PROVIDER") or "openai").strip().lower()
+        if tts_provider not in {"openai", "local"}:
+            raise ValueError(
+                "MY_ENGLISH_BUDDY_TTS_PROVIDER must be 'openai' or 'local'. "
+                f"Got: {tts_provider!r}"
+            )
+
+        tts_voice = (os.getenv("MY_ENGLISH_BUDDY_TTS_VOICE") or "").strip() or None
+
         # TODO: In the real desktop app, this should likely be stored per-user
         # (e.g., in local storage) and editable in the UI.
         system_prompt = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT") or None
         system_prompt_file = os.getenv("MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE") or DEFAULT_SYSTEM_PROMPT_FILE
 
+        tts_defaults = TextToSpeechConfig()
         return AppConfig(
             openai=OpenAIConfig(
                 api_key=api_key,
@@ -61,6 +78,10 @@ class AppConfig:
             stt=SpeechToTextConfig(
                 provider=stt_provider,
                 local_model=local_stt_model,
+            ),
+            tts=TextToSpeechConfig(
+                provider=tts_provider,
+                voice=tts_voice if tts_voice is not None else tts_defaults.voice,
             ),
             system_prompt=system_prompt,
             system_prompt_file=system_prompt_file,
