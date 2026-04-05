@@ -1,29 +1,29 @@
 from collections.abc import Callable
-from queue import Empty, Full, Queue
+from queue import Queue
 from threading import BoundedSemaphore, Event, Lock, Thread
-from time import monotonic, sleep
-from typing import NamedTuple
+from time import monotonic
 
 import numpy as np
 
 from app.application.conversation_service import ConversationService
 from app.application.errors import ExternalServiceError
+from app.application.interruption_context import build_interruption_prompt
+from app.application.port.listener import Listener
+from app.application.port.speaker import Speaker
 from app.application.port.speech_to_text import SpeechToText
 from app.application.port.text_to_speech import TextToSpeech
-from app.infrastructure.audio.listener import Listener
-from app.infrastructure.audio.speaker import Speaker
+from app.application.reply_queue import LatestReplyQueue
+from app.application.sleep_watchdog import SleepWatchdog
+from app.application.speaker_loop import SpeakerLoop
+from app.application.wake_word_detector import WakeWordDetector
 from app.utils.logger import Logger
 
 
-class _ReplyItem(NamedTuple):
-    request_id: int
-    text: str
-
-
 class ConversationRunner:
-    WAKE_WORDS = ["buddy"]
     SLEEP_TIMEOUT_SECONDS = 180.0
     SLEEP_POLL_INTERVAL_SECONDS = 0.5
+    _MAX_INFLIGHT_REQUESTS: int = 2
+    _UTTERANCE_QUEUE_SIZE: int = 3
 
     def __init__(
         self,
@@ -40,30 +40,35 @@ class ConversationRunner:
         self.tts = tts
         self.speaker = speaker
         self.logger = logger
-        self.is_awake = False
-        self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
+        self._wake_word_detector = WakeWordDetector()
+        self._is_awake = False
+        self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=self._UTTERANCE_QUEUE_SIZE)
         self.stop_listening_event = Event()
-        self.reply_queue: Queue[_ReplyItem] = Queue(maxsize=1)
-        self.stop_speaking_event = Event()
-        self.is_speaking_event = Event()
+        self.reply_queue = LatestReplyQueue()
+        self._speaker_loop = SpeakerLoop(
+            tts=tts,
+            speaker=speaker,
+            reply_queue=self.reply_queue,
+            on_reply_completed=self._on_reply_completed,
+            logger=logger,
+        )
         self._state_lock = Lock()
-        self._request_id = 0
-        self._latest_request_id = 0
-        self._inflight_semaphore = BoundedSemaphore(value=2)
+        self._inflight_semaphore = BoundedSemaphore(value=self._MAX_INFLIGHT_REQUESTS)
         self._listener_thread: Thread | None = None
 
         self._sleep_watchdog_thread: Thread | None = None
         self._last_activity_at: float = monotonic()
         self._inflight_workers = 0
 
-        # Tracks what Buddy is currently speaking so we can provide interruption context
-        # even when we only decide to interrupt after STT confirms real user speech.
-        self._currently_speaking_text: str | None = None
-
         # Optional hooks for UI/observers.
         self.on_calibration_start: Callable[[], None] | None = None
         self.on_calibration_end: Callable[[float], None] | None = None
         self.on_calibration_error: Callable[[Exception], None] | None = None
+
+    @property
+    def is_awake(self) -> bool:
+        with self._state_lock:
+            return self._is_awake
 
     def request_noise_recalibration(self) -> None:
         self.listener.request_recalibration()
@@ -99,9 +104,7 @@ class ConversationRunner:
         try:
             # Snapshot speaking state before STT so we don't miss an interruption
             # due to STT latency.
-            with self._state_lock:
-                was_speaking = self.is_speaking_event.is_set()
-                speaking_text = self._currently_speaking_text
+            was_speaking, speaking_text = self._speaker_loop.snapshot_speaking_state()
 
             user_text = self.stt.transcribe(audio)
             if not user_text:
@@ -109,48 +112,28 @@ class ConversationRunner:
 
             # If Buddy is currently speaking and STT produced non-empty text, treat it as a real
             # user interruption and stop playback (do NOT stop on mere noise detection).
-            interrupted = False
-            interrupted_assistant_text: str | None = None
             if was_speaking:
-                self.stop_speaking_event.set()
-                interrupted = True
-                interrupted_assistant_text = speaking_text
+                self._speaker_loop.stop_speaking()
 
             with self._state_lock:
-                is_awake = self.is_awake
+                is_awake = self._is_awake
 
             if not is_awake:
-                if self._detect_wake_word(user_text):
+                if self._wake_word_detector.detect(user_text):
                     with self._state_lock:
-                        self.is_awake = True
+                        self._is_awake = True
                         self._last_activity_at = monotonic()
                 else:
                     return
 
             self._log(f"You: {user_text}")
 
-            ephemeral_system_prompt = (
-                "The user started speaking while the assistant was speaking. "
-                "Treat the user's next message as an interruption that may be a correction or a follow-up question. "
-                "Respond naturally."
-                if interrupted
-                else None
+            ephemeral_system_prompt = build_interruption_prompt(
+                was_speaking=was_speaking,
+                speaking_text=speaking_text,
             )
 
-            if interrupted and interrupted_assistant_text:
-                # Keep this provider-agnostic and do not commit it to memory.
-                # Tell the model to ignore it if irrelevant to avoid topic pollution.
-                ephemeral_system_prompt = (
-                    (ephemeral_system_prompt or "")
-                    + "\n\n"
-                    + "The assistant was in the middle of saying: \""
-                    + interrupted_assistant_text.strip()
-                    + "\". "
-                    + "If the user's message seems to respond to or correct that, use it as context; "
-                    + "otherwise ignore it and answer the user's message normally."
-                )
-
-            request_id = self._next_request_id()
+            request_id = self.reply_queue.next_request_id()
             reply = self.conversation_service.prepare_reply(
                 user_text,
                 ephemeral_system_prompt=ephemeral_system_prompt,
@@ -159,7 +142,7 @@ class ConversationRunner:
                 return
 
             self._log(f"Buddy: {reply}")
-            self._publish_reply_if_latest(request_id=request_id, reply=reply)
+            self.reply_queue.publish(request_id=request_id, text=reply)
         except ExternalServiceError as e:
             self._log(f"External service error: {e}")
         except (OSError, RuntimeError, ValueError) as e:
@@ -198,137 +181,54 @@ class ConversationRunner:
         if self.on_calibration_error:
             self.on_calibration_error(error)
 
-    def _on_user_speech_start(self) -> None:
-        # Reserved for future use.
-        return
-
     def _log(self, message: str) -> None:
-        if self.logger:
-            self.logger.log(message)
-
-    def _detect_wake_word(self, text: str) -> bool:
-        normalized_text = text.lower()
-        return any(wake_word in normalized_text for wake_word in self.WAKE_WORDS)
-
-    def _next_request_id(self) -> int:
-        with self._state_lock:
-            self._request_id += 1
-            self._latest_request_id = self._request_id
-            return self._request_id
-
-    def _publish_reply_if_latest(self, *, request_id: int, reply: str) -> None:
-        with self._state_lock:
-            if request_id != self._latest_request_id:
-                return
-
-        item = _ReplyItem(request_id=request_id, text=reply)
-
-        try:
-            while True:
-                self.reply_queue.get_nowait()
-        except Empty:
-            pass
-
-        try:
-            self.reply_queue.put_nowait(item)
-        except Full:
-            pass
+        self.logger.log(message)
 
     def _start_speaker_thread(self) -> None:
-        thread = Thread(
-            target=self._speaker_loop,
-            daemon=True,
-        )
-        thread.start()
+        self._speaker_loop.start()
 
     def _start_sleep_watchdog_thread(self) -> None:
         if self._sleep_watchdog_thread and self._sleep_watchdog_thread.is_alive():
             return
 
-        self._sleep_watchdog_thread = Thread(
-            target=self._sleep_watchdog_loop,
-            daemon=True,
+        watchdog = SleepWatchdog(
+            poll_interval=self.SLEEP_POLL_INTERVAL_SECONDS,
+            should_sleep=self._should_sleep,
+            attempt_sleep=self._try_go_to_sleep,
+            logger=self.logger,
         )
-        self._sleep_watchdog_thread.start()
+        self._sleep_watchdog_thread = watchdog.start()
 
-    def _sleep_watchdog_loop(self) -> None:
-        while True:
-            sleep(self.SLEEP_POLL_INTERVAL_SECONDS)
-
-            if not self._should_sleep(now=monotonic()):
-                continue
-
-            with self._state_lock:
-                # Re-check under lock to avoid races.
-                if not self._should_sleep_unsafe(now=monotonic()):
-                    continue
-                self.is_awake = False
-
-            self._log("Sleeping (idle timeout). Say 'Buddy' to start.")
-
-    def _should_sleep(self, *, now: float) -> bool:
-        # Public, lock-taking wrapper.
+    def _should_sleep(self) -> bool:
         with self._state_lock:
-            return self._should_sleep_unsafe(now=now)
+            return self._should_sleep_unsafe(now=monotonic())
+
+    def _try_go_to_sleep(self) -> bool:
+        """Atomically transition to sleep if the condition still holds.
+
+        Returns True when sleep was applied, False when a race was detected.
+        """
+        with self._state_lock:
+            if not self._should_sleep_unsafe(now=monotonic()):
+                return False
+            self._is_awake = False
+        return True
 
     def _should_sleep_unsafe(self, *, now: float) -> bool:
-        # Internal helper that assumes _state_lock is already held.
-        if not self.is_awake:
+        # Assumes _state_lock is already held by the caller.
+        if not self._is_awake:
             return False
 
         # Do not sleep while speaking or while there are inflight workers.
-        if self.is_speaking_event.is_set():
+        if self._speaker_loop.is_speaking:
             return False
         if self._inflight_workers > 0:
             return False
 
         return (now - self._last_activity_at) >= self.SLEEP_TIMEOUT_SECONDS
 
-    def _speaker_loop(self) -> None:
-        while True:
-            item = self.reply_queue.get()
-
-            if not item.text:
-                continue
-
-            with self._state_lock:
-                if item.request_id != self._latest_request_id:
-                    continue
-
-            try:
-                self.stop_speaking_event.clear()
-
-                # Keep speaking state and speaking text consistent for readers that snapshot both.
-                with self._state_lock:
-                    self._currently_speaking_text = item.text
-                    self.is_speaking_event.set()
-
-                reply_audio = self.tts.synthesize(item.text)
-
-                with self._state_lock:
-                    if item.request_id != self._latest_request_id:
-                        continue
-
-                completed = self.speaker.speak(
-                    reply_audio,
-                    stop_event=self.stop_speaking_event,
-                )
-                if not completed:
-                    self._log(
-                        f"Buddy (interrupted, request_id={item.request_id}): {item.text}"
-                    )
-                else:
-                    # If playback completed, the user heard this reply, so commit it to memory.
-                    # Do not gate on `_latest_request_id` here: it can change while speaking,
-                    # which would otherwise create a "heard but not remembered" inconsistency.
-                    self.conversation_service.commit_assistant_reply(item.text)
-                    with self._state_lock:
-                        self._last_activity_at = monotonic()
-            except (ExternalServiceError, OSError, RuntimeError, ValueError) as e:
-                self._log(f"Error in speaker loop: {e}")
-                self.stop_speaking_event.set()
-                continue
-            finally:
-                with self._state_lock:
-                    self.is_speaking_event.clear()
-                    self._currently_speaking_text = None
+    def _on_reply_completed(self, text: str) -> None:
+        """Called by SpeakerLoop when a reply has been played back in full."""
+        self.conversation_service.commit_assistant_reply(text)
+        with self._state_lock:
+            self._last_activity_at = monotonic()

@@ -5,14 +5,17 @@ from app.application.port.chat_client import ChatClient
 from app.domain.entity.conversation_memory import ConversationMemory
 from app.domain.vo.chat_message import ChatMessage
 
+_DEFAULT_MAX_MEMORY_MESSAGES: int = 50
+_DEFAULT_MEMORY_WINDOW: int = 20
+
 
 @dataclass
 class ConversationService:
     chat_client: ChatClient
     conversation_memory: ConversationMemory = field(
-        default_factory=lambda: ConversationMemory(max_messages=50)
+        default_factory=lambda: ConversationMemory(max_messages=_DEFAULT_MAX_MEMORY_MESSAGES)
     )
-    memory_window: int = 20
+    memory_window: int = _DEFAULT_MEMORY_WINDOW
     system_prompt: str | None = (
         "You are My English Buddy. Answer in clear, friendly English. "
         "If the user writes Japanese, you may include short Japanese hints."
@@ -49,6 +52,15 @@ class ConversationService:
             messages.extend(self.conversation_memory.recent(self.memory_window))
 
         reply = self.chat_client.complete_messages(messages=messages)
+        if not reply.strip():
+            # Roll back only if the last message is still the same user message
+            # we appended above. This avoids deleting a different message that may
+            # have been added by another thread while the lock was released during
+            # the external API call.
+            with self._lock:
+                last = self.conversation_memory.recent(1)
+                if last and last[-1].role == "user" and last[-1].content == user_text:
+                    self.conversation_memory.pop_last()
         return reply
 
     def commit_assistant_reply(self, reply: str) -> None:
