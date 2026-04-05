@@ -56,6 +56,9 @@ uv run python -m app.main
 | `MY_ENGLISH_BUDDY_SYSTEM_PROMPT_FILE` | No | `prompt.txt` | システムプロンプトを含むテキストファイルのパス。ファイルが存在し、空でない場合のみ使用されます |
 | `MY_ENGLISH_BUDDY_STT_PROVIDER` | No | `openai` | Speech-to-Text プロバイダー: `openai`（デフォルト）または `local`（faster-whisper） |
 | `MY_ENGLISH_BUDDY_LOCAL_STT_MODEL` | No | `distil-large-v3` | ローカル STT のモデル名（例: `distil-large-v3`, `large-v3`, `medium`）。`MY_ENGLISH_BUDDY_STT_PROVIDER=local` の場合のみ使用 |
+| `MY_ENGLISH_BUDDY_TTS_PROVIDER` | No | `openai` | Text-to-Speech プロバイダー: `openai`（デフォルト）または `local`（Kokoro） |
+| `MY_ENGLISH_BUDDY_TTS_VOICE` | No | *(プロバイダーのデフォルト)* | ボイス名。OpenAI デフォルト: `alloy`。Kokoro デフォルト: `af_heart` |
+| `MY_ENGLISH_BUDDY_TTS_LANG_CODE` | No | `a` | Kokoro 言語コード。`a`=American English、`j`=日本語、`b`=British English。`MY_ENGLISH_BUDDY_TTS_PROVIDER=local` の場合のみ使用 |
 
 システムプロンプトの解決順序:
 
@@ -80,7 +83,28 @@ MY_ENGLISH_BUDDY_LOCAL_STT_MODEL=distil-large-v3
 
 補足:
 - CUDA が見つからない場合は CPU にフォールバックします。
-- チャット/TTS のために `OPENAI_API_KEY` は必要です。
+- チャットのために `OPENAI_API_KEY` は必要です。
+
+## オプション: ローカル Text-to-Speech
+
+OpenAI TTS の代わりに、Kokoro（高品質なローカル TTS エンジン）を使用できます（API 呼び出しなし、ランニングコスト 0）:
+
+```bash
+uv sync --extra local-tts
+
+# ローカル TTS を有効化（.env に追記）
+MY_ENGLISH_BUDDY_TTS_PROVIDER=local
+# 任意: ボイスと言語コード
+MY_ENGLISH_BUDDY_TTS_VOICE=af_heart
+MY_ENGLISH_BUDDY_TTS_LANG_CODE=a
+```
+
+補足:
+- GPU（CUDA）推奨（低遅延）。CPU のみでも動作しますが遅くなります。
+- 初回起動時に Kokoro モデル（約 300 MB）が Hugging Face から自動ダウンロードされます。
+- Linux では GPU の有無にかかわらず CUDA 12.4 用の PyTorch wheel index が使われます。macOS では PyPI の CPU wheel が使われます。CPU のみの Linux 環境でも CUDA wheel が選ばれますが、GPU なしでも動作します（ダウンロードサイズは大きくなります）。
+- チャットのために `OPENAI_API_KEY` は必要です。
+- **日本語 TTS**: `uv sync --extra local-tts` は英語サポートのみです。日本語 (`MY_ENGLISH_BUDDY_TTS_LANG_CODE=j`) を使う場合は追加で `uv sync --extra local-tts-ja` を実行してください。`local-tts-ja` には C/C++ ビルドツール（Linux/macOS）または Visual Studio Build Tools（Windows）が必要です。
 
 ## 開発
 
@@ -102,4 +126,5 @@ uv run pytest
 - **反応が鈍い/過敏**: メニューの `Tools` → `ノイズキャリブレーション` を試してください。
 - **音声が途中で止まる**: アシスタント発話中に話しかけると再生が停止します。
 - **ローカル STT**: `uv sync --extra local-stt` で導入します。
+- **ローカル TTS**: `uv sync --extra local-tts` で導入します。
 - **ログ**: 終了時に `logs/` 配下へ保存されます（不具合報告に添付してください）。

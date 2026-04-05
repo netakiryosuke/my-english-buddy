@@ -26,10 +26,34 @@ local-stt = [
     "faster-whisper>=1.2.1",
 ]
 
+local-tts = [
+    "kokoro>=0.9.4",
+    "misaki>=0.9.0",
+    "torch>=2.6.0",
+]
+
+# Japanese TTS support requires pyopenjtalk (C++ build tools needed on Windows).
+# Install separately: uv sync --extra local-tts-ja
+local-tts-ja = [
+    "misaki[ja]>=0.9.0",
+]
+
 vad = [
     "webrtcvad-wheels>=2.0.12; platform_system == 'Windows'",
     "webrtcvad>=2.0.10; platform_system != 'Windows'",
 ]
+
+[tool.uv.sources]
+torch = [
+    # Linux では GPU の有無にかかわらず CUDA 12.4 wheel index を使う。
+    # macOS など Linux 以外の環境では、PyPI 側の wheel を使う。
+    { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 [tool.ruff]
 target-version = "py312"
