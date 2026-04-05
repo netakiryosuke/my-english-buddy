@@ -25,6 +25,12 @@ class ConversationMemory:
             return []
         return self._messages[-n:]
 
+    def pop_last(self) -> "ChatMessage | None":
+        """Remove and return the last message, or None if empty."""
+        if not self._messages:
+            return None
+        return self._messages.pop()
+
     def clear(self) -> None:
         self._messages.clear()
 

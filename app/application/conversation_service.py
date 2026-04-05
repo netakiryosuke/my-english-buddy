@@ -53,6 +53,10 @@ class ConversationService:
             messages.extend(self.conversation_memory.recent(self.memory_window))
 
         reply = self.chat_client.complete_messages(messages=messages)
+        if not reply:
+            # Roll back the user message so it doesn't become an orphan in memory.
+            with self._lock:
+                self.conversation_memory.pop_last()
         return reply
 
     def commit_assistant_reply(self, reply: str) -> None:
