@@ -182,8 +182,7 @@ class ConversationRunner:
             self.on_calibration_error(error)
 
     def _log(self, message: str) -> None:
-        if self.logger:
-            self.logger.log(message)
+        self.logger.log(message)
 
     def _start_speaker_thread(self) -> None:
         self._speaker_loop.start()
