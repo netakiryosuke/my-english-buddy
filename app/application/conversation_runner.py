@@ -41,7 +41,7 @@ class ConversationRunner:
         self.speaker = speaker
         self.logger = logger
         self._wake_word_detector = WakeWordDetector()
-        self.is_awake = False
+        self._is_awake = False
         self.utterance_queue: Queue[np.ndarray] = Queue(maxsize=3)
         self.stop_listening_event = Event()
         self.reply_queue = LatestReplyQueue()
@@ -64,6 +64,11 @@ class ConversationRunner:
         self.on_calibration_start: Callable[[], None] | None = None
         self.on_calibration_end: Callable[[float], None] | None = None
         self.on_calibration_error: Callable[[Exception], None] | None = None
+
+    @property
+    def is_awake(self) -> bool:
+        with self._state_lock:
+            return self._is_awake
 
     def request_noise_recalibration(self) -> None:
         self.listener.request_recalibration()
@@ -111,12 +116,12 @@ class ConversationRunner:
                 self._speaker_loop.stop_speaking()
 
             with self._state_lock:
-                is_awake = self.is_awake
+                is_awake = self._is_awake
 
             if not is_awake:
                 if self._wake_word_detector.detect(user_text):
                     with self._state_lock:
-                        self.is_awake = True
+                        self._is_awake = True
                         self._last_activity_at = monotonic()
                 else:
                     return
@@ -207,12 +212,12 @@ class ConversationRunner:
         with self._state_lock:
             if not self._should_sleep_unsafe(now=monotonic()):
                 return False
-            self.is_awake = False
+            self._is_awake = False
         return True
 
     def _should_sleep_unsafe(self, *, now: float) -> bool:
         # Assumes _state_lock is already held by the caller.
-        if not self.is_awake:
+        if not self._is_awake:
             return False
 
         # Do not sleep while speaking or while there are inflight workers.
