@@ -1,7 +1,5 @@
 """Unit tests for Conversation aggregate root."""
 
-import pytest
-
 from app.domain.entity.conversation import Conversation
 
 
