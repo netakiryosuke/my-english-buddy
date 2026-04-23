@@ -53,6 +53,18 @@ class TestConversation:
     def test_cancel_turn_when_no_pending(self):
         assert self.conv.cancel_turn() is None
 
+    def test_cancel_turn_with_matching_expected_utterance(self):
+        self.conv.start_turn("Hello")
+        utterance = self.conv.cancel_turn(expected_utterance="Hello")
+        assert utterance == "Hello"
+        assert not self.conv.has_pending_turn
+
+    def test_cancel_turn_with_mismatched_expected_utterance(self):
+        self.conv.start_turn("Hello")
+        result = self.conv.cancel_turn(expected_utterance="World")
+        assert result is None
+        assert self.conv.has_pending_turn
+
     def test_complete_turn_without_start_is_noop(self):
         self.conv.complete_turn("Hi!")
         assert self.conv.turn_count == 0

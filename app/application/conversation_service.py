@@ -51,11 +51,15 @@ class ConversationService:
                 )
             messages.extend(self.conversation.build_messages(self.context_turns))
 
-        reply = self.chat_client.complete_messages(messages=messages)
+        try:
+            reply = self.chat_client.complete_messages(messages=messages)
+        except Exception:
+            with self._lock:
+                self.conversation.cancel_turn(expected_utterance=user_text)
+            raise
         if not reply.strip():
             with self._lock:
-                if self.conversation.has_pending_turn:
-                    self.conversation.cancel_turn()
+                self.conversation.cancel_turn(expected_utterance=user_text)
         return reply
 
     def commit_assistant_reply(self, reply: str) -> None:

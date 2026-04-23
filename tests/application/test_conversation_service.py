@@ -177,6 +177,26 @@ class TestConversationService(unittest.TestCase):
         
         self.assertIs(service.conversation, custom_conv)
 
+    def test_prepare_reply_cleans_up_pending_on_exception(self):
+        """Test that pending turn is cancelled when chat client raises."""
+        self.mock_chat_client.complete_messages.side_effect = RuntimeError("API error")
+
+        with self.assertRaises(RuntimeError):
+            self.service.prepare_reply("Hello")
+
+        self.assertFalse(self.service.conversation.has_pending_turn)
+        self.assertEqual(self.service.conversation.turn_count, 0)
+
+    def test_prepare_reply_cleans_up_pending_on_empty_reply(self):
+        """Test that pending turn is cancelled when reply is empty."""
+        self.mock_chat_client.complete_messages.return_value = "   "
+
+        reply = self.service.prepare_reply("Hello")
+
+        self.assertEqual(reply, "   ")
+        self.assertFalse(self.service.conversation.has_pending_turn)
+        self.assertEqual(self.service.conversation.turn_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,7 +37,15 @@ class Conversation:
         self._pending_user_utterance = None
         self._trim_if_needed()
 
-    def cancel_turn(self) -> str | None:
+    def cancel_turn(self, *, expected_utterance: str | None = None) -> str | None:
+        """未完了のターンをキャンセルし、保留中のユーザー発話を返す。
+
+        expected_utterance を指定すると、保留中の発話が一致する場合のみキャンセルする。
+        """
+        if self._pending_user_utterance is None:
+            return None
+        if expected_utterance is not None and self._pending_user_utterance != expected_utterance:
+            return None
         utterance = self._pending_user_utterance
         self._pending_user_utterance = None
         return utterance
