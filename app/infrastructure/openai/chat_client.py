@@ -3,7 +3,7 @@ from typing import Sequence, TypeAlias
 from openai import OpenAI, OpenAIError
 
 from app.application.errors import ChatClientError
-from app.domain.vo.chat_message import ChatMessage
+from app.domain.vo.chat_message import ChatMessage, ChatRole
 
 try:
     from openai.types.chat import (
@@ -23,8 +23,8 @@ class OpenAIChatClient:
     def complete(self, *, system: str | None, user: str) -> str:
         messages: list[ChatMessage] = []
         if system:
-            messages.append(ChatMessage(role="system", content=system))
-        messages.append(ChatMessage(role="user", content=user))
+            messages.append(ChatMessage(role=ChatRole.SYSTEM, content=system))
+        messages.append(ChatMessage(role=ChatRole.USER, content=user))
         return self.complete_messages(messages=messages)
 
     def complete_messages(self, *, messages: Sequence[ChatMessage]) -> str:

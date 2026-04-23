@@ -1,7 +1,11 @@
 from dataclasses import dataclass
-from typing import Literal
+from enum import StrEnum
 
-ChatRole = Literal["system", "user", "assistant"]
+
+class ChatRole(StrEnum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
 
 
 @dataclass(frozen=True)

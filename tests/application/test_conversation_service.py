@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from app.application.conversation_service import ConversationService
 from app.application.port.chat_client import ChatClient
-from app.domain.entity.conversation_memory import ConversationMemory
+from app.domain.entity.conversation import Conversation
 
 
 class TestConversationService(unittest.TestCase):
@@ -35,19 +35,17 @@ class TestConversationService(unittest.TestCase):
         self.assertEqual(messages[1].role, "user")
         self.assertEqual(messages[1].content, "Hello")
 
-    def test_reply_stores_messages_in_memory(self):
-        """Test that reply stores user and assistant messages in memory."""
+    def test_reply_stores_messages_in_conversation(self):
+        """Test that reply stores user and assistant messages in conversation."""
         self.mock_chat_client.complete_messages.return_value = "Test response"
         
         self.service.reply("Hello")
         
-        # Check memory contains both messages
-        self.assertEqual(len(self.service.conversation_memory), 2)
-        messages = self.service.conversation_memory.recent(2)
-        self.assertEqual(messages[0].role, "user")
-        self.assertEqual(messages[0].content, "Hello")
-        self.assertEqual(messages[1].role, "assistant")
-        self.assertEqual(messages[1].content, "Test response")
+        # Check conversation contains one completed turn
+        self.assertEqual(self.service.conversation.turn_count, 1)
+        turns = self.service.conversation.recent_context(1)
+        self.assertEqual(turns[0].user_utterance, "Hello")
+        self.assertEqual(turns[0].assistant_reply, "Test response")
 
     def test_reply_sends_recent_conversation_history(self):
         """Test that reply sends recent conversation history."""
@@ -75,66 +73,59 @@ class TestConversationService(unittest.TestCase):
         self.assertEqual(messages[3].role, "user")
         self.assertEqual(messages[3].content, "Second message")
 
-    def test_reply_respects_memory_window(self):
-        """Test that reply only sends messages within memory_window."""
-        # Set a small memory window
-        self.service.memory_window = 4  # Will send last 4 messages
+    def test_reply_respects_context_turns(self):
+        """Test that reply only sends messages within context_turns."""
+        # Set a small context window
+        self.service.context_turns = 2  # Will send last 2 turns
         self.mock_chat_client.complete_messages.return_value = "Response"
         
-        # Add 3 exchanges (6 messages total)
+        # Add 3 exchanges (3 turns total)
         for i in range(3):
             self.service.reply(f"Message {i}")
         
         # Check the third call
-        # At the time of the third call, memory has:
-        # [0] user: Message 0, [1] assistant: Response
-        # [2] user: Message 1, [3] assistant: Response
-        # [4] user: Message 2
-        # With window=4, we get the last 4 messages: indices 1-4
+        # At the time of the third call, conversation has:
+        # Turn 0: (Message 0, Response), Turn 1: (Message 1, Response)
+        # Pending: Message 2
+        # With context_turns=2, we get turns 0 and 1 + pending user
         third_call_args = self.mock_chat_client.complete_messages.call_args
         messages = third_call_args.kwargs["messages"]
         
-        # Should have: system + last 4 messages
-        self.assertEqual(len(messages), 5)
+        # Should have: system + 2 turns (4 messages) + pending user (1 message)
+        self.assertEqual(len(messages), 6)
         self.assertEqual(messages[0].role, "system")
-        self.assertEqual(messages[1].content, "Response")
-        self.assertEqual(messages[2].content, "Message 1")
-        self.assertEqual(messages[3].content, "Response")
-        self.assertEqual(messages[4].content, "Message 2")
+        self.assertEqual(messages[1].content, "Message 0")
+        self.assertEqual(messages[2].content, "Response")
+        self.assertEqual(messages[3].content, "Message 1")
+        self.assertEqual(messages[4].content, "Response")
+        self.assertEqual(messages[5].content, "Message 2")
 
-    def test_reply_with_many_messages_respects_window(self):
-        """Test that memory window works correctly with many messages."""
-        # Set memory window to 6 messages
-        self.service.memory_window = 6
+    def test_reply_with_many_messages_respects_context(self):
+        """Test that context window works correctly with many messages."""
+        # Set context window to 3 turns
+        self.service.context_turns = 3
         self.mock_chat_client.complete_messages.return_value = "Reply"
         
-        # Add 10 exchanges (20 messages total)
+        # Add 10 exchanges (10 turns total)
         for i in range(10):
             self.service.reply(f"User message {i}")
         
-        # Get the last call (10th call)
-        # At the time of the 10th call, memory has:
-        # [0-1] exchange 0, [2-3] exchange 1, ..., [16-17] exchange 8
-        # [18] user: User message 9
-        # Memory has max 50 messages, so all 19 messages are kept
-        # With window=6, we get the last 6 messages: indices 13-18
-        # That's: [13] assistant: Reply, [14] user: User message 7,
-        # [15] assistant: Reply, [16] user: User message 8,
-        # [17] assistant: Reply, [18] user: User message 9
         last_call_args = self.mock_chat_client.complete_messages.call_args
         messages = last_call_args.kwargs["messages"]
         
-        # Should have: system + last 6 messages
-        self.assertEqual(len(messages), 7)
+        # At the 10th call: 9 completed turns exist, pending "User message 9"
+        # context_turns=3 → last 3 completed turns (6,7,8) + pending
+        # Should have: system + 3 turns (6 messages) + pending user (1)
+        self.assertEqual(len(messages), 8)
         self.assertEqual(messages[0].role, "system")
         
-        # Last 6 messages should end with User message 9
-        self.assertEqual(messages[1].content, "Reply")
-        self.assertEqual(messages[2].content, "User message 7")
-        self.assertEqual(messages[3].content, "Reply")
-        self.assertEqual(messages[4].content, "User message 8")
-        self.assertEqual(messages[5].content, "Reply")
-        self.assertEqual(messages[6].content, "User message 9")
+        self.assertEqual(messages[1].content, "User message 6")
+        self.assertEqual(messages[2].content, "Reply")
+        self.assertEqual(messages[3].content, "User message 7")
+        self.assertEqual(messages[4].content, "Reply")
+        self.assertEqual(messages[5].content, "User message 8")
+        self.assertEqual(messages[6].content, "Reply")
+        self.assertEqual(messages[7].content, "User message 9")
 
     def test_reply_empty_string_returns_empty(self):
         """Test that empty string returns empty response."""
@@ -176,15 +167,35 @@ class TestConversationService(unittest.TestCase):
         self.assertEqual(messages[0].role, "user")
         self.assertEqual(messages[0].content, "Hello")
 
-    def test_custom_memory_service(self):
-        """Test that custom memory service can be provided."""
-        custom_memory = ConversationMemory(max_messages=5)
+    def test_custom_conversation(self):
+        """Test that custom conversation can be provided."""
+        custom_conv = Conversation(max_turns=5)
         service = ConversationService(
             chat_client=self.mock_chat_client,
-            conversation_memory=custom_memory
+            conversation=custom_conv
         )
         
-        self.assertIs(service.conversation_memory, custom_memory)
+        self.assertIs(service.conversation, custom_conv)
+
+    def test_prepare_reply_cleans_up_pending_on_exception(self):
+        """Test that pending turn is cancelled when chat client raises."""
+        self.mock_chat_client.complete_messages.side_effect = RuntimeError("API error")
+
+        with self.assertRaises(RuntimeError):
+            self.service.prepare_reply("Hello")
+
+        self.assertFalse(self.service.conversation.has_pending_turn)
+        self.assertEqual(self.service.conversation.turn_count, 0)
+
+    def test_prepare_reply_cleans_up_pending_on_empty_reply(self):
+        """Test that pending turn is cancelled when reply is empty."""
+        self.mock_chat_client.complete_messages.return_value = "   "
+
+        reply = self.service.prepare_reply("Hello")
+
+        self.assertEqual(reply, "   ")
+        self.assertFalse(self.service.conversation.has_pending_turn)
+        self.assertEqual(self.service.conversation.turn_count, 0)
 
 
 if __name__ == "__main__":
